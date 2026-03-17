@@ -648,16 +648,8 @@
             uImpactTimes: { value: Array(20).fill(-100) }
         };
 
-        const bgGeometry = new THREE.BufferGeometry();
-        const bgPositions = [];
-
-        for (let i = -25; i < 25; i++) {
-            for (let j = -15; j < 15; j++) {
-                bgPositions.push(i * 0.5, j * 0.5, -2);
-            }
-        }
-
-        bgGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bgPositions, 3));
+        let bgGeometry = null;
+        let bgPoints = null;
 
         const bgMaterial = new THREE.ShaderMaterial({
             uniforms: bgUniforms,
@@ -714,9 +706,53 @@
             depthWrite: false
         });
 
-        const bgPoints = new THREE.Points(bgGeometry, bgMaterial);
-        bgPoints.renderOrder = 0;
-        scene.add(bgPoints);
+        function createBgGeometry() {
+            // 固定 world space 間距
+            const spacing = 0.35;
+            // 取得相機參數
+            const aspect = window.innerWidth / window.innerHeight;
+            const fov = camera.fov * Math.PI / 180;
+            // 計算 z = -2 時的可見範圍（相機在 z=8）
+            const camZ = camera.position.z;
+            const planeZ = -2;
+            const dz = camZ - planeZ;
+            const viewHeight = 2 * Math.tan(fov / 2) * dz;
+            const viewWidth = viewHeight * aspect;
+            const xCount = Math.ceil(viewWidth / spacing) + 2;
+            const yCount = Math.ceil(viewHeight / spacing) + 2;
+            const xStart = -viewWidth / 2;
+            const yStart = -viewHeight / 2;
+
+            const bgPositions = [];
+            for (let i = 0; i < xCount; i++) {
+                for (let j = 0; j < yCount; j++) {
+                    const x = xStart + i * spacing;
+                    const y = yStart + j * spacing;
+                    bgPositions.push(x, y, planeZ);
+                }
+            }
+
+            if (bgGeometry) bgGeometry.dispose();
+            bgGeometry = new THREE.BufferGeometry();
+            bgGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bgPositions, 3));
+            return bgGeometry;
+        }
+
+        // 初始化與重建背景點
+        function updateBgPoints() {
+            if (bgPoints) {
+                scene.remove(bgPoints);
+                bgPoints.geometry.dispose();
+                // material 不要 dispose，會重用
+            }
+            const geometry = createBgGeometry();
+            bgPoints = new THREE.Points(geometry, bgMaterial);
+            bgPoints.renderOrder = 0;
+            scene.add(bgPoints);
+        }
+
+        updateBgPoints();
+
 
         // =========================================================
         // 8. 光圈與火花
@@ -828,7 +864,7 @@
             const points = new THREE.Points(
                 geo,
                 new THREE.ShaderMaterial({
-                    uniforms: { uTex: { value: colorTex } },
+                    uniforms: { uTex: { value: colorTex }, uTime: { value: 0 } },
                     vertexShader: `
                         attribute float aSize;
                         attribute float aAlpha;
@@ -857,6 +893,7 @@
                     `,
                     fragmentShader: `
                         uniform sampler2D uTex;
+                        uniform float uTime;
 
                         varying float vAlpha;
                         varying float vType;
@@ -888,7 +925,19 @@
                             finalUV.x = (finalUV.x + floor(vType + 0.5)) / 4.0;
 
                             vec4 texColor = texture2D(uTex, finalUV);
-                            gl_FragColor = vec4(texColor.rgb, texColor.a * vAlpha);
+
+                            // --- 閃爍效果（移除 gl_FragCoord 條紋）---
+                            // 依 vType 決定是否閃爍（約一半有閃爍，一半恆亮）
+                            float flicker = 1.0;
+                            if (fract(vType * 0.37 + vRotX * 0.21) > 0.5) {
+                                flicker = 0.6 + 0.5 * sin(uTime * 3.0 + vRotX * 2.0 + vRotY * 3.1 + vRotZ * 1.7 + vType * 5.0);
+                            }
+                            // 讓部分粒子有機率直接熄滅
+                            float cutoff = 0.25 + 0.5 * sin(uTime * 2.2 + vRotY * 3.0 + vRotZ * 1.5 + vType * 2.0);
+                            float alpha = texColor.a * vAlpha * flicker;
+                            if (alpha < cutoff) discard;
+
+                            gl_FragColor = vec4(texColor.rgb, alpha);
                         }
                     `,
                     transparent: true,
@@ -1017,6 +1066,13 @@
                 }
             }
 
+            // 更新火花 shader 的 uTime
+            for (const s of activeSparks) {
+                if (s.points.material.uniforms && s.points.material.uniforms.uTime) {
+                    s.points.material.uniforms.uTime.value = now;
+                }
+            }
+
             for (let i = activeSparks.length - 1; i >= 0; i--) {
                 const s = activeSparks[i];
                 let alive = 0;
@@ -1067,6 +1123,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            updateBgPoints();
         });
     </script>
 </body>
