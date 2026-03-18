@@ -245,15 +245,18 @@
         // =========================================================
         let instrument = null;
         let reverb = null;
+        let limiter = null;
         let audioStarted = false;
         let currentSound = 'synth';
+        const activePianoKeyStates = new Map();
+        const PIANO_TAP_DURATION = 0.12;
 
         const soundSelect = document.getElementById('sound-select');
 
         // 各音色音量（單位：dB）
         const INSTRUMENT_VOLUMES = {
             synth: 0,
-            piano: 5,
+            piano: 3,
             harp: 10,
             bell: 0
         };
@@ -313,6 +316,7 @@
                 instrument.dispose();
             }
             instrument = null;
+            activePianoKeyStates.clear();
         }
 
         async function createPianoInstrument() {
@@ -395,10 +399,11 @@
 
             await Tone.start();
 
+            limiter = new Tone.Limiter(-1).toDestination();
             reverb = new Tone.Reverb({
                 decay: 2.5,
                 wet: 0.3
-            }).toDestination();
+            }).connect(limiter);
 
             await createInstrument(currentSound);
             audioStarted = true;
@@ -430,6 +435,32 @@
             } else {
                 instrument.triggerAttackRelease(note, "8n");
             }
+        }
+
+        function playPianoKeyDown(key, midi) {
+            if (!instrument || currentSound !== 'piano' || activePianoKeyStates.has(key)) return;
+
+            const note = Tone.Frequency(midi, "midi").toNote();
+            const startTime = Tone.now();
+
+            instrument.triggerAttack(note, startTime);
+            activePianoKeyStates.set(key, { note, startTime });
+        }
+
+        function releasePianoKey(key) {
+            if (!instrument) return;
+
+            const state = activePianoKeyStates.get(key);
+            if (!state) return;
+
+            const now = Tone.now();
+            const heldFor = now - state.startTime;
+            const releaseTime = heldFor < PIANO_TAP_DURATION
+                ? now + (PIANO_TAP_DURATION - heldFor)
+                : now;
+
+            instrument.triggerRelease(state.note, releaseTime);
+            activePianoKeyStates.delete(key);
         }
 
         // =========================================================
@@ -650,6 +681,9 @@
 
         let bgGeometry = null;
         let bgPoints = null;
+        const BG_PLANE_Z = -2;
+        const RING_PLANE_Z = 0.1;
+        const SPARK_PLANE_Z = 0.2;
 
         const bgMaterial = new THREE.ShaderMaterial({
             uniforms: bgUniforms,
@@ -714,7 +748,7 @@
             const fov = camera.fov * Math.PI / 180;
             // 計算 z = -2 時的可見範圍（相機在 z=8）
             const camZ = camera.position.z;
-            const planeZ = -2;
+            const planeZ = BG_PLANE_Z;
             const dz = camZ - planeZ;
             const viewHeight = 2 * Math.tan(fov / 2) * dz;
             const viewWidth = viewHeight * aspect;
@@ -761,8 +795,8 @@
         const activeSparks = [];
         let impactIdx = 0;
 
-        function triggerInteraction(x, y, midi) {
-            bgUniforms.uImpacts.value[impactIdx].set(x, y, 0);
+        function triggerInteraction(bgPoint, ringPoint, midi) {
+            bgUniforms.uImpacts.value[impactIdx].set(bgPoint.x, bgPoint.y, 0);
             bgUniforms.uImpactTimes.value[impactIdx] = performance.now() * 0.001;
             impactIdx = (impactIdx + 1) % 20;
 
@@ -803,7 +837,7 @@
                 })
             );
 
-            mesh.position.set(x, y, 0.1);
+            mesh.position.set(ringPoint.x, ringPoint.y, RING_PLANE_Z);
             mesh.renderOrder = 1;
             scene.add(mesh);
             activeRings.push({ mesh, uniforms: ringUniforms });
@@ -812,7 +846,7 @@
             setTimeout(() => highlightKey(midi, false), 150);
         }
 
-        function spawnSparks(x, y) {
+        function spawnSparks(point) {
             const count = 8;
 
             const geo = new THREE.BufferGeometry();
@@ -829,9 +863,9 @@
             const rvz = new Float32Array(count);
 
             for (let i = 0; i < count; i++) {
-                pos[i * 3] = x;
-                pos[i * 3 + 1] = y;
-                pos[i * 3 + 2] = 0.2;
+                pos[i * 3] = point.x;
+                pos[i * 3 + 1] = point.y;
+                pos[i * 3 + 2] = SPARK_PLANE_Z;
 
                 const angle = Math.random() * Math.PI * 2;
                 const speed = Math.random() * 0.05 + 0.05;
@@ -985,6 +1019,27 @@
             return { x, y };
         }
 
+        function getScreenPointOnPlane(clientX, clientY, targetZ) {
+            const mouse = new THREE.Vector2(
+                (clientX / window.innerWidth) * 2 - 1,
+                -(clientY / window.innerHeight) * 2 + 1
+            );
+
+            const ray = new THREE.Raycaster();
+            ray.setFromCamera(mouse, camera);
+
+            const point = new THREE.Vector3();
+            const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
+            ray.ray.intersectPlane(plane, point);
+            return point;
+        }
+
+        function projectPointToPlane(sourcePoint, targetZ) {
+            const direction = sourcePoint.clone().sub(camera.position);
+            const scale = (targetZ - camera.position.z) / direction.z;
+            return camera.position.clone().add(direction.multiplyScalar(scale));
+        }
+
         // =========================================================
         // 10. 鍵盤互動
         // =========================================================
@@ -994,16 +1049,33 @@
 
             if (midi !== null) {
                 e.preventDefault();
+                if (e.repeat) return;
 
                 try {
                     await initAudio();
                     const { x, y } = getKeyVisualPosition(key);
-                    triggerInteraction(x, y, midi);
-                    spawnSparks(x, y);
-                    playMidi(midi);
+                    const ringPoint = new THREE.Vector3(x, y, RING_PLANE_Z);
+                    const bgPoint = projectPointToPlane(ringPoint, BG_PLANE_Z);
+                    const sparkPoint = projectPointToPlane(ringPoint, SPARK_PLANE_Z);
+                    triggerInteraction(bgPoint, ringPoint, midi);
+                    spawnSparks(sparkPoint);
+
+                    if (currentSound === 'piano') {
+                        playPianoKeyDown(key, midi);
+                    } else {
+                        playMidi(midi);
+                    }
                 } catch (err) {
                     console.error('Audio init/play failed:', err);
                 }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+
+            if (currentSound === 'piano' && activePianoKeyStates.has(key)) {
+                releasePianoKey(key);
             }
         });
 
@@ -1023,21 +1095,13 @@
             try {
                 await initAudio();
 
-                const mouse = new THREE.Vector2(
-                    (e.clientX / window.innerWidth) * 2 - 1,
-                    -(e.clientY / window.innerHeight) * 2 + 1
-                );
-
-                const ray = new THREE.Raycaster();
-                ray.setFromCamera(mouse, camera);
-
-                const cur = new THREE.Vector3();
-                ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), cur);
-
                 const midi = getMidiFromScaleKey('a', false, false) ?? 60;
+                const ringPoint = getScreenPointOnPlane(e.clientX, e.clientY, RING_PLANE_Z);
+                const bgPoint = projectPointToPlane(ringPoint, BG_PLANE_Z);
+                const sparkPoint = projectPointToPlane(ringPoint, SPARK_PLANE_Z);
 
-                triggerInteraction(cur.x, cur.y, midi);
-                spawnSparks(cur.x, cur.y);
+                triggerInteraction(bgPoint, ringPoint, midi);
+                spawnSparks(sparkPoint);
                 playMidi(midi);
             } catch (err) {
                 console.error('Mouse audio init/play failed:', err);
