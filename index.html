@@ -195,6 +195,9 @@
                     <option value="piano">Piano</option>
                     <option value="harp">Harp</option>
                     <option value="bell">Bell</option>
+                    <option value="marimba_kalimba">Marimba/Kalimba</option>
+                    <option value="chiptune_lead">Chiptune Lead</option>
+                    <option value="lofi_ep">Lo-fi EP</option>
                 </select>
             </div>
 
@@ -248,6 +251,8 @@
         let limiter = null;
         let audioStarted = false;
         let currentSound = 'synth';
+        let lofiVibrato = null;
+        let lofiFilter = null;
         const activePianoKeyStates = new Map();
         const PIANO_TAP_DURATION = 0.12;
 
@@ -258,7 +263,10 @@
             synth: 0,
             piano: 3,
             harp: 10,
-            bell: 0
+            bell: 0,
+            marimba_kalimba: 2,
+            chiptune_lead: -1,
+            lofi_ep: -2
         };
 
         const PIANO_SAMPLE_CONFIG = {
@@ -306,13 +314,49 @@
             baseUrl: "./harp/"
         };
         const PIANO_RELEASE = 0.18;
+        const LOW_LATENCY_CONFIG = {
+            lookAhead: 0.005,
+            updateInterval: 0.01
+        };
+
+        function getToneContext() {
+            if (typeof Tone.getContext === 'function') return Tone.getContext();
+            return Tone.context;
+        }
+
+        function applyLowLatencyMode() {
+            const toneContext = getToneContext();
+            if (toneContext) {
+                toneContext.lookAhead = LOW_LATENCY_CONFIG.lookAhead;
+                toneContext.updateInterval = LOW_LATENCY_CONFIG.updateInterval;
+            }
+        }
+
+        function getTriggerTime() {
+            if (typeof Tone.immediate === 'function') {
+                return Tone.immediate();
+            }
+            return Tone.now();
+        }
 
         function applyInstrumentVolume(type) {
             if (!instrument || !instrument.volume) return;
             instrument.volume.value = INSTRUMENT_VOLUMES[type] ?? 0;
         }
 
+        function disposeLofiChain() {
+            if (lofiVibrato && typeof lofiVibrato.dispose === 'function') {
+                lofiVibrato.dispose();
+            }
+            if (lofiFilter && typeof lofiFilter.dispose === 'function') {
+                lofiFilter.dispose();
+            }
+            lofiVibrato = null;
+            lofiFilter = null;
+        }
+
         function disposeCurrentInstrument() {
+            disposeLofiChain();
             if (instrument && typeof instrument.dispose === 'function') {
                 instrument.dispose();
             }
@@ -386,6 +430,74 @@
 
                 applyInstrumentVolume('bell');
             }
+            else if (type === 'marimba_kalimba') {
+                disposeCurrentInstrument();
+
+                instrument = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "triangle8" },
+                    envelope: {
+                        attack: 0.001,
+                        decay: 0.22,
+                        sustain: 0.0,
+                        release: 0.28
+                    }
+                }).connect(reverb);
+
+                applyInstrumentVolume('marimba_kalimba');
+            }
+            else if (type === 'chiptune_lead') {
+                disposeCurrentInstrument();
+
+                instrument = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: "square" },
+                    envelope: {
+                        attack: 0.002,
+                        decay: 0.08,
+                        sustain: 0.45,
+                        release: 0.12
+                    }
+                }).connect(reverb);
+
+                applyInstrumentVolume('chiptune_lead');
+            }
+            else if (type === 'lofi_ep') {
+                disposeCurrentInstrument();
+
+                instrument = new Tone.PolySynth(Tone.FMSynth, {
+                    harmonicity: 1.5,
+                    modulationIndex: 3.5,
+                    detune: 0,
+                    oscillator: { type: "triangle" },
+                    envelope: {
+                        attack: 0.015,
+                        decay: 0.35,
+                        sustain: 0.28,
+                        release: 1.1
+                    },
+                    modulation: { type: "sine" },
+                    modulationEnvelope: {
+                        attack: 0.02,
+                        decay: 0.2,
+                        sustain: 0.0,
+                        release: 0.6
+                    }
+                });
+
+                lofiVibrato = new Tone.Vibrato({
+                    frequency: 4.2,
+                    depth: 0.08,
+                    type: "sine"
+                });
+                lofiFilter = new Tone.Filter({
+                    type: "lowpass",
+                    frequency: 3600,
+                    rolloff: -24,
+                    Q: 0.8
+                });
+
+                instrument.chain(lofiVibrato, lofiFilter, reverb);
+                applyInstrumentVolume('lofi_ep');
+            }
             else if (type === 'piano') {
                 await createPianoInstrument();
             }
@@ -400,6 +512,7 @@
             if (audioStarted) return;
 
             await Tone.start();
+            applyLowLatencyMode();
 
             limiter = new Tone.Limiter(-1).toDestination();
             reverb = new Tone.Reverb({
@@ -427,15 +540,22 @@
             if (!instrument) return;
 
             const note = Tone.Frequency(midi, "midi").toNote();
+            const triggerTime = getTriggerTime();
 
             if (currentSound === 'piano') {
-                instrument.triggerAttackRelease(note, 1.4);
+                instrument.triggerAttackRelease(note, 1.4, triggerTime);
             } else if (currentSound === 'harp') {
-                instrument.triggerAttackRelease(note, 2.0);
+                instrument.triggerAttackRelease(note, 2.0, triggerTime);
             } else if (currentSound === 'bell') {
-                instrument.triggerAttackRelease(note, "2n");
+                instrument.triggerAttackRelease(note, "2n", triggerTime);
+            } else if (currentSound === 'marimba_kalimba') {
+                instrument.triggerAttackRelease(note, "8n", triggerTime);
+            } else if (currentSound === 'chiptune_lead') {
+                instrument.triggerAttackRelease(note, "16n", triggerTime);
+            } else if (currentSound === 'lofi_ep') {
+                instrument.triggerAttackRelease(note, "4n", triggerTime);
             } else {
-                instrument.triggerAttackRelease(note, "8n");
+                instrument.triggerAttackRelease(note, "8n", triggerTime);
             }
         }
 
@@ -443,7 +563,7 @@
             if (!instrument || currentSound !== 'piano' || activePianoKeyStates.has(key)) return;
 
             const note = Tone.Frequency(midi, "midi").toNote();
-            const startTime = Tone.now();
+            const startTime = getTriggerTime();
 
             instrument.triggerAttack(note, startTime);
             activePianoKeyStates.set(key, { note, startTime });
@@ -455,7 +575,7 @@
             const state = activePianoKeyStates.get(key);
             if (!state) return;
 
-            const now = Tone.now();
+            const now = getTriggerTime();
             const heldFor = now - state.startTime;
             const releaseTime = heldFor < PIANO_TAP_DURATION
                 ? now + (PIANO_TAP_DURATION - heldFor)
