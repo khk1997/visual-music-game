@@ -484,10 +484,22 @@
             transition: background 0.1s;
         }
 
-        .key.active {
+        .key.user-active {
             background: #00d2ff !important;
             box-shadow: 0 0 20px #00d2ff;
             border-color: #00d2ff;
+        }
+
+        .key.playback-active {
+            background: #ff4d5f !important;
+            box-shadow: 0 0 20px #ff4d5f;
+            border-color: #ff4d5f;
+        }
+
+        .key.mixed-active {
+            background: #c94cff !important;
+            box-shadow: 0 0 22px #c94cff;
+            border-color: #c94cff;
         }
 
         @media (max-width: 820px) {
@@ -627,13 +639,19 @@
         // 1. 音源設定
         // =========================================================
         let instrument = null;
+        let playbackInstrument = null;
         let reverb = null;
         let limiter = null;
         let audioStarted = false;
         let currentSound = 'synth';
+        let recordedSoundType = 'synth';
         let lofiVibrato = null;
         let lofiFilter = null;
         const activePianoKeyStates = new Map();
+        let playbackLofiVibrato = null;
+        let playbackLofiFilter = null;
+        const liveKeyHighlights = new Map();
+        const playbackKeyHighlights = new Map();
         const PIANO_TAP_DURATION = 0.12;
         let currentScreen = 'home';
 
@@ -662,6 +680,7 @@
         let playbackEndTimer = null;
         const playbackTimers = [];
         const playbackPianoNotes = new Map();
+        let playbackLoopDuration = 0;
 
         // 各音色音量（單位：dB）
         const INSTRUMENT_VOLUMES = {
@@ -744,61 +763,66 @@
             return Tone.now();
         }
 
-        function applyInstrumentVolume(type) {
-            if (!instrument || !instrument.volume) return;
-            instrument.volume.value = INSTRUMENT_VOLUMES[type] ?? 0;
+        function applyInstrumentVolumeTo(targetInstrument, type) {
+            if (!targetInstrument || !targetInstrument.volume) return;
+            targetInstrument.volume.value = INSTRUMENT_VOLUMES[type] ?? 0;
         }
 
-        function disposeLofiChain() {
-            if (lofiVibrato && typeof lofiVibrato.dispose === 'function') {
-                lofiVibrato.dispose();
+        function disposeLofiChain(vibratoRef, filterRef) {
+            if (vibratoRef && typeof vibratoRef.dispose === 'function') {
+                vibratoRef.dispose();
             }
-            if (lofiFilter && typeof lofiFilter.dispose === 'function') {
-                lofiFilter.dispose();
+            if (filterRef && typeof filterRef.dispose === 'function') {
+                filterRef.dispose();
             }
-            lofiVibrato = null;
-            lofiFilter = null;
         }
 
         function disposeCurrentInstrument() {
-            disposeLofiChain();
+            disposeLofiChain(lofiVibrato, lofiFilter);
             if (instrument && typeof instrument.dispose === 'function') {
                 instrument.dispose();
             }
             instrument = null;
+            lofiVibrato = null;
+            lofiFilter = null;
             activePianoKeyStates.clear();
         }
 
-        async function createPianoInstrument() {
-            disposeCurrentInstrument();
-
-            instrument = new Tone.Sampler({
-                urls: PIANO_SAMPLE_CONFIG.urls,
-                baseUrl: PIANO_SAMPLE_CONFIG.baseUrl,
-                release: PIANO_RELEASE
-            }).connect(reverb);
-
-            await Tone.loaded();
-            applyInstrumentVolume('piano');
+        function disposePlaybackInstrument() {
+            disposeLofiChain(playbackLofiVibrato, playbackLofiFilter);
+            if (playbackInstrument && typeof playbackInstrument.dispose === 'function') {
+                playbackInstrument.dispose();
+            }
+            playbackInstrument = null;
+            playbackLofiVibrato = null;
+            playbackLofiFilter = null;
+            playbackPianoNotes.clear();
         }
 
-        async function createHarpInstrument() {
-            disposeCurrentInstrument();
+        async function createInstrumentInstance(type) {
+            let nextInstrument = null;
+            let nextLofiVibrato = null;
+            let nextLofiFilter = null;
 
-            instrument = new Tone.Sampler({
-                urls: HARP_SAMPLE_CONFIG.urls,
-                baseUrl: HARP_SAMPLE_CONFIG.baseUrl
-            }).connect(reverb);
+            if (type === 'piano') {
+                nextInstrument = new Tone.Sampler({
+                    urls: PIANO_SAMPLE_CONFIG.urls,
+                    baseUrl: PIANO_SAMPLE_CONFIG.baseUrl,
+                    release: PIANO_RELEASE
+                }).connect(reverb);
 
-            await Tone.loaded();
-            applyInstrumentVolume('harp');
-        }
+                await Tone.loaded();
+            }
+            else if (type === 'harp') {
+                nextInstrument = new Tone.Sampler({
+                    urls: HARP_SAMPLE_CONFIG.urls,
+                    baseUrl: HARP_SAMPLE_CONFIG.baseUrl
+                }).connect(reverb);
 
-        async function createInstrument(type) {
-            if (type === 'synth') {
-                disposeCurrentInstrument();
-
-                instrument = new Tone.PolySynth(Tone.Synth, {
+                await Tone.loaded();
+            }
+            else if (type === 'synth') {
+                nextInstrument = new Tone.PolySynth(Tone.Synth, {
                     oscillator: { type: "triangle" },
                     envelope: {
                         attack: 0.005,
@@ -807,13 +831,9 @@
                         release: 1.2
                     }
                 }).connect(reverb);
-
-                applyInstrumentVolume('synth');
             }
             else if (type === 'bell') {
-                disposeCurrentInstrument();
-
-                instrument = new Tone.PolySynth(Tone.FMSynth, {
+                nextInstrument = new Tone.PolySynth(Tone.FMSynth, {
                     harmonicity: 8,
                     modulationIndex: 12,
                     envelope: {
@@ -832,13 +852,9 @@
                         release: 0.8
                     }
                 }).connect(reverb);
-
-                applyInstrumentVolume('bell');
             }
             else if (type === 'marimba_kalimba') {
-                disposeCurrentInstrument();
-
-                instrument = new Tone.PolySynth(Tone.Synth, {
+                nextInstrument = new Tone.PolySynth(Tone.Synth, {
                     oscillator: { type: "triangle8" },
                     envelope: {
                         attack: 0.001,
@@ -847,13 +863,9 @@
                         release: 0.28
                     }
                 }).connect(reverb);
-
-                applyInstrumentVolume('marimba_kalimba');
             }
             else if (type === 'chiptune_lead') {
-                disposeCurrentInstrument();
-
-                instrument = new Tone.PolySynth(Tone.Synth, {
+                nextInstrument = new Tone.PolySynth(Tone.Synth, {
                     oscillator: { type: "square" },
                     envelope: {
                         attack: 0.002,
@@ -862,13 +874,9 @@
                         release: 0.12
                     }
                 }).connect(reverb);
-
-                applyInstrumentVolume('chiptune_lead');
             }
             else if (type === 'lofi_ep') {
-                disposeCurrentInstrument();
-
-                instrument = new Tone.PolySynth(Tone.FMSynth, {
+                nextInstrument = new Tone.PolySynth(Tone.FMSynth, {
                     harmonicity: 1.5,
                     modulationIndex: 3.5,
                     detune: 0,
@@ -888,26 +896,69 @@
                     }
                 });
 
-                lofiVibrato = new Tone.Vibrato({
+                nextLofiVibrato = new Tone.Vibrato({
                     frequency: 4.2,
                     depth: 0.08,
                     type: "sine"
                 });
-                lofiFilter = new Tone.Filter({
+                nextLofiFilter = new Tone.Filter({
                     type: "lowpass",
                     frequency: 3600,
                     rolloff: -24,
                     Q: 0.8
                 });
 
-                instrument.chain(lofiVibrato, lofiFilter, reverb);
-                applyInstrumentVolume('lofi_ep');
+                nextInstrument.chain(nextLofiVibrato, nextLofiFilter, reverb);
             }
-            else if (type === 'piano') {
+
+            applyInstrumentVolumeTo(nextInstrument, type);
+            return {
+                instrument: nextInstrument,
+                lofiVibrato: nextLofiVibrato,
+                lofiFilter: nextLofiFilter
+            };
+        }
+
+        async function createPianoInstrument() {
+            disposeCurrentInstrument();
+
+            const created = await createInstrumentInstance('piano');
+            instrument = created.instrument;
+            lofiVibrato = created.lofiVibrato;
+            lofiFilter = created.lofiFilter;
+        }
+
+        async function createHarpInstrument() {
+            disposeCurrentInstrument();
+
+            const created = await createInstrumentInstance('harp');
+            instrument = created.instrument;
+            lofiVibrato = created.lofiVibrato;
+            lofiFilter = created.lofiFilter;
+        }
+
+        async function createPlaybackInstrument(type) {
+            disposePlaybackInstrument();
+
+            const created = await createInstrumentInstance(type);
+            playbackInstrument = created.instrument;
+            playbackLofiVibrato = created.lofiVibrato;
+            playbackLofiFilter = created.lofiFilter;
+        }
+
+        async function createInstrument(type) {
+            if (type === 'piano') {
                 await createPianoInstrument();
             }
             else if (type === 'harp') {
                 await createHarpInstrument();
+            }
+            else {
+                disposeCurrentInstrument();
+                const created = await createInstrumentInstance(type);
+                instrument = created.instrument;
+                lofiVibrato = created.lofiVibrato;
+                lofiFilter = created.lofiFilter;
             }
 
             currentSound = type;
@@ -941,27 +992,30 @@
             }
         });
 
-        function playMidi(midi) {
-            if (!instrument) return;
-
+        function playMidiWithInstrument(targetInstrument, soundType, midi) {
+            if (!targetInstrument) return;
             const note = Tone.Frequency(midi, "midi").toNote();
             const triggerTime = getTriggerTime();
 
-            if (currentSound === 'piano') {
-                instrument.triggerAttackRelease(note, 1.4, triggerTime);
-            } else if (currentSound === 'harp') {
-                instrument.triggerAttackRelease(note, 2.0, triggerTime);
-            } else if (currentSound === 'bell') {
-                instrument.triggerAttackRelease(note, "2n", triggerTime);
-            } else if (currentSound === 'marimba_kalimba') {
-                instrument.triggerAttackRelease(note, "8n", triggerTime);
-            } else if (currentSound === 'chiptune_lead') {
-                instrument.triggerAttackRelease(note, "16n", triggerTime);
-            } else if (currentSound === 'lofi_ep') {
-                instrument.triggerAttackRelease(note, "4n", triggerTime);
+            if (soundType === 'piano') {
+                targetInstrument.triggerAttackRelease(note, 1.4, triggerTime);
+            } else if (soundType === 'harp') {
+                targetInstrument.triggerAttackRelease(note, 2.0, triggerTime);
+            } else if (soundType === 'bell') {
+                targetInstrument.triggerAttackRelease(note, "2n", triggerTime);
+            } else if (soundType === 'marimba_kalimba') {
+                targetInstrument.triggerAttackRelease(note, "8n", triggerTime);
+            } else if (soundType === 'chiptune_lead') {
+                targetInstrument.triggerAttackRelease(note, "16n", triggerTime);
+            } else if (soundType === 'lofi_ep') {
+                targetInstrument.triggerAttackRelease(note, "4n", triggerTime);
             } else {
-                instrument.triggerAttackRelease(note, "8n", triggerTime);
+                targetInstrument.triggerAttackRelease(note, "8n", triggerTime);
             }
+        }
+
+        function playMidi(midi) {
+            playMidiWithInstrument(instrument, currentSound, midi);
         }
 
         function playPianoKeyDown(key, midi) {
@@ -1009,10 +1063,40 @@
 
         createPianoKeys();
 
-        function highlightKey(midi, active) {
-            if (!allKeysMap[midi]) return;
-            if (active) allKeysMap[midi].classList.add('active');
-            else allKeysMap[midi].classList.remove('active');
+        function updateKeyHighlightState(midi) {
+            const keyEl = allKeysMap[midi];
+            if (!keyEl) return;
+
+            const hasLive = (liveKeyHighlights.get(midi) ?? 0) > 0;
+            const hasPlayback = (playbackKeyHighlights.get(midi) ?? 0) > 0;
+
+            keyEl.classList.remove('user-active', 'playback-active', 'mixed-active');
+
+            if (hasLive && hasPlayback) keyEl.classList.add('mixed-active');
+            else if (hasLive) keyEl.classList.add('user-active');
+            else if (hasPlayback) keyEl.classList.add('playback-active');
+        }
+
+        function highlightKey(source, midi, active) {
+            const targetMap = source === 'playback' ? playbackKeyHighlights : liveKeyHighlights;
+            const currentCount = targetMap.get(midi) ?? 0;
+
+            if (active) {
+                targetMap.set(midi, currentCount + 1);
+            } else if (currentCount <= 1) {
+                targetMap.delete(midi);
+            } else {
+                targetMap.set(midi, currentCount - 1);
+            }
+
+            updateKeyHighlightState(midi);
+        }
+
+        function clearHighlightMap(targetMap) {
+            for (const midi of Array.from(targetMap.keys())) {
+                targetMap.delete(midi);
+                updateKeyHighlightState(midi);
+            }
         }
 
         function isInteractivePlayback() {
@@ -1058,7 +1142,7 @@
             recordToggleButton.textContent = isRecording ? 'Stop Rec' : 'Record';
             recordToggleButton.classList.toggle('is-active', isRecording);
 
-            playbackToggleButton.textContent = isPlaybackActive ? 'Playing...' : 'Playback';
+            playbackToggleButton.textContent = isPlaybackActive ? 'Stop Loop' : 'Playback';
             playbackToggleButton.classList.toggle('is-active', isPlaybackActive);
 
             const playbackDisabled = isRecording || recordedEvents.length === 0;
@@ -1081,6 +1165,7 @@
                 releasePlaybackPianoMidi(midi);
             }
 
+            clearHighlightMap(playbackKeyHighlights);
             isPlaybackActive = false;
             updateTransportButtons();
         }
@@ -1093,6 +1178,7 @@
         function startRecording() {
             stopPlayback();
             recordedEvents = [];
+            recordedSoundType = currentSound;
             recordingStartTime = nowSeconds();
             isRecording = true;
             updateTransportButtons();
@@ -1108,16 +1194,16 @@
         }
 
         function attackPlaybackPianoMidi(midi) {
-            if (!instrument || currentSound !== 'piano' || playbackPianoNotes.has(midi)) return;
+            if (!playbackInstrument || recordedSoundType !== 'piano' || playbackPianoNotes.has(midi)) return;
 
             const note = Tone.Frequency(midi, "midi").toNote();
             const startTime = getTriggerTime();
-            instrument.triggerAttack(note, startTime);
+            playbackInstrument.triggerAttack(note, startTime);
             playbackPianoNotes.set(midi, { note, startTime });
         }
 
         function releasePlaybackPianoMidi(midi) {
-            if (!instrument) return;
+            if (!playbackInstrument) return;
 
             const state = playbackPianoNotes.get(midi);
             if (!state) return;
@@ -1128,17 +1214,51 @@
                 ? now + (PIANO_TAP_DURATION - heldFor)
                 : now;
 
-            instrument.triggerRelease(state.note, releaseTime);
+            playbackInstrument.triggerRelease(state.note, releaseTime);
             playbackPianoNotes.delete(midi);
         }
 
-        function playVisualFeedback(midi, ringX, ringY) {
+        function playVisualFeedback(source, midi, ringX, ringY) {
             const ringPoint = new THREE.Vector3(ringX, ringY, RING_PLANE_Z);
+            const mistPoint = projectPointToPlane(ringPoint, MIST_PLANE_Z);
             const bgPoint = projectPointToPlane(ringPoint, BG_PLANE_Z);
             const sparkPoint = projectPointToPlane(ringPoint, SPARK_PLANE_Z);
 
-            triggerInteraction(bgPoint, midi);
+            triggerInteraction(source, bgPoint, midi);
+            spawnMist(mistPoint, midi);
             spawnSparks(sparkPoint);
+        }
+
+        function schedulePlaybackLoopPass() {
+            if (!isPlaybackActive) return;
+
+            for (const event of recordedEvents) {
+                const timer = setTimeout(() => {
+                    if (!isPlaybackActive) return;
+
+                    if (event.type === 'note-on') {
+                        playVisualFeedback('playback', event.midi, event.ringX, event.ringY);
+
+                        if (recordedSoundType === 'piano' && event.sustained) {
+                            attackPlaybackPianoMidi(event.midi);
+                        } else {
+                            playMidiWithInstrument(playbackInstrument, recordedSoundType, event.midi);
+                        }
+                    } else if (event.type === 'note-off' && recordedSoundType === 'piano') {
+                        releasePlaybackPianoMidi(event.midi);
+                    }
+                }, Math.max(0, event.time * 1000));
+
+                playbackTimers.push(timer);
+            }
+
+            playbackEndTimer = setTimeout(() => {
+                for (const midi of Array.from(playbackPianoNotes.keys())) {
+                    releasePlaybackPianoMidi(midi);
+                }
+
+                schedulePlaybackLoopPass();
+            }, playbackLoopDuration * 1000);
         }
 
         async function startPlayback() {
@@ -1148,6 +1268,7 @@
 
             try {
                 await initAudio();
+                await createPlaybackInstrument(recordedSoundType);
             } catch (err) {
                 console.error('Playback audio init failed:', err);
                 return;
@@ -1155,29 +1276,8 @@
 
             isPlaybackActive = true;
             updateTransportButtons();
-
-            for (const event of recordedEvents) {
-                const timer = setTimeout(() => {
-                    if (event.type === 'note-on') {
-                        playVisualFeedback(event.midi, event.ringX, event.ringY);
-
-                        if (currentSound === 'piano' && event.sustained) {
-                            attackPlaybackPianoMidi(event.midi);
-                        } else {
-                            playMidi(event.midi);
-                        }
-                    } else if (event.type === 'note-off' && currentSound === 'piano') {
-                        releasePlaybackPianoMidi(event.midi);
-                    }
-                }, Math.max(0, event.time * 1000));
-
-                playbackTimers.push(timer);
-            }
-
-            const lastEventTime = recordedEvents.reduce((maxTime, event) => Math.max(maxTime, event.time), 0);
-            playbackEndTimer = setTimeout(() => {
-                stopPlayback();
-            }, (lastEventTime + 0.25) * 1000);
+            playbackLoopDuration = recordedEvents.reduce((maxTime, event) => Math.max(maxTime, event.time), 0) + 0.25;
+            schedulePlaybackLoopPass();
         }
 
         recordToggleButton.addEventListener('click', () => {
@@ -1351,7 +1451,7 @@
                 return { canvas, ctx };
             }
 
-            function drawShapes(ctx, x, c, lw, sb) {
+            function drawSparkShapes(ctx, x, c, lw, sb) {
                 ctx.save();
                 ctx.translate(x, 64);
                 ctx.shadowColor = c;
@@ -1359,6 +1459,38 @@
                 ctx.strokeStyle = c;
                 ctx.lineWidth = lw;
 
+                // 底層加一圈較淡的粗描邊，做出一點厚度感
+                ctx.globalAlpha = 0.38;
+                ctx.lineWidth = lw + 4;
+                if (x === 64) {
+                    ctx.beginPath();
+                    ctx.moveTo(-30, -30);
+                    ctx.lineTo(30, 30);
+                    ctx.moveTo(30, -30);
+                    ctx.lineTo(-30, 30);
+                    ctx.stroke();
+                }
+                if (x === 192) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 35, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                if (x === 320) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, -35);
+                    ctx.lineTo(-35, 30);
+                    ctx.lineTo(35, 30);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+                if (x === 448) {
+                    ctx.beginPath();
+                    ctx.rect(-30, -30, 60, 60);
+                    ctx.stroke();
+                }
+
+                ctx.globalAlpha = 1;
+                ctx.lineWidth = lw;
                 if (x === 64) {
                     ctx.beginPath();
                     ctx.moveTo(-30, -30);
@@ -1389,31 +1521,93 @@
                 ctx.restore();
             }
 
+            function carveHollowShape(ctx, x) {
+                if (x === 64) {
+                    ctx.beginPath();
+                    ctx.moveTo(-20, -20);
+                    ctx.lineTo(20, 20);
+                    ctx.moveTo(20, -20);
+                    ctx.lineTo(-20, 20);
+                    ctx.stroke();
+                }
+                if (x === 192) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 18, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                if (x === 320) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, -23);
+                    ctx.lineTo(-21, 16);
+                    ctx.lineTo(21, 16);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+                if (x === 448) {
+                    ctx.beginPath();
+                    ctx.rect(-18, -18, 36, 36);
+                    ctx.stroke();
+                }
+            }
+
+            function drawBackgroundShapes(ctx, x, fillColor) {
+                ctx.save();
+                ctx.translate(x, 64);
+                ctx.shadowColor = fillColor;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = fillColor;
+
+                ctx.beginPath();
+                ctx.arc(0, 0, 31, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 7;
+                carveHollowShape(ctx, x);
+                ctx.restore();
+            }
+
             const { canvas: cC, ctx: cCtx } = makeCanvas();
-            drawShapes(cCtx, 64, '#00d2ff', 8, 10);
-            drawShapes(cCtx, 192, '#ff355e', 8, 10);
-            drawShapes(cCtx, 320, '#00ff85', 8, 10);
-            drawShapes(cCtx, 448, '#ff67e2', 8, 10);
-            const colorTex = new THREE.CanvasTexture(cC);
+            drawSparkShapes(cCtx, 64, '#00d2ff', 8.8, 13);
+            drawSparkShapes(cCtx, 192, '#ff355e', 8.8, 13);
+            drawSparkShapes(cCtx, 320, '#00ff85', 8.8, 13);
+            drawSparkShapes(cCtx, 448, '#ff67e2', 8.8, 13);
+            const sparkTex = new THREE.CanvasTexture(cC);
 
-            const { canvas: wC, ctx: wCtx } = makeCanvas();
-            drawShapes(wCtx, 64, '#ffffff', 2.5, 4);
-            drawShapes(wCtx, 192, '#ffffff', 2.5, 4);
-            drawShapes(wCtx, 320, '#ffffff', 2.5, 4);
-            drawShapes(wCtx, 448, '#ffffff', 2.5, 4);
-            const whiteTex = new THREE.CanvasTexture(wC);
+            const { canvas: bgC, ctx: bgCtx } = makeCanvas();
+            drawBackgroundShapes(bgCtx, 64, '#ffffff');
+            drawBackgroundShapes(bgCtx, 192, '#ffffff');
+            drawBackgroundShapes(bgCtx, 320, '#ffffff');
+            drawBackgroundShapes(bgCtx, 448, '#ffffff');
+            const bgTex = new THREE.CanvasTexture(bgC);
 
-            return { colorTex, whiteTex };
+            const mistCanvas = document.createElement('canvas');
+            mistCanvas.width = 128;
+            mistCanvas.height = 128;
+            const mistCtx = mistCanvas.getContext('2d');
+            const mistGradient = mistCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+            mistGradient.addColorStop(0, 'rgba(255,255,255,0.95)');
+            mistGradient.addColorStop(0.32, 'rgba(255,255,255,0.38)');
+            mistGradient.addColorStop(0.65, 'rgba(255,255,255,0.1)');
+            mistGradient.addColorStop(1, 'rgba(255,255,255,0)');
+            mistCtx.fillStyle = mistGradient;
+            mistCtx.beginPath();
+            mistCtx.arc(64, 64, 64, 0, Math.PI * 2);
+            mistCtx.fill();
+            const mistTex = new THREE.CanvasTexture(mistCanvas);
+
+            return { sparkTex, bgTex, mistTex };
         }
 
-        const { colorTex, whiteTex } = createPS5Textures();
+        const { sparkTex, bgTex, mistTex } = createPS5Textures();
 
         // =========================================================
         // 7. 背景波紋
         // =========================================================
         const bgUniforms = {
             uTime: { value: 0 },
-            uTex: { value: whiteTex },
+            uTex: { value: bgTex },
             uImpacts: { value: Array.from({ length: 20 }, () => new THREE.Vector3(100, 100, 0)) },
             uImpactTimes: { value: Array(20).fill(-100) }
         };
@@ -1421,6 +1615,7 @@
         let bgGeometry = null;
         let bgPoints = null;
         const BG_PLANE_Z = -2;
+        const MIST_PLANE_Z = -0.35;
         const RING_PLANE_Z = 0.1;
         const SPARK_PLANE_Z = 0.2;
 
@@ -1452,11 +1647,11 @@
                             float m = smoothstep(2.5, 0.0, abs(d - waveR));
 
                             totalOsc += rip * m * dec;
-                            brightEffect += m * dec * 1.6;
+                            brightEffect += m * dec * 1.0;
                         }
                     }
 
-                    vGlow = max(0.0, brightEffect + max(0.0, totalOsc * 2.0)) * 1.2;
+                    vGlow = max(0.0, brightEffect + max(0.0, totalOsc * 1.35)) * 0.9;
 
                     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
                     gl_PointSize = 1.18 * (1.0 + totalOsc * 1.2) * (350.0 / -mvPos.z);
@@ -1482,7 +1677,7 @@
 
         function createBgGeometry() {
             // 固定 world space 間距
-            const spacing = 0.35;
+            const spacing = 0.215;
             // 取得相機參數
             const aspect = window.innerWidth / window.innerHeight;
             const fov = camera.fov * Math.PI / 180;
@@ -1538,7 +1733,19 @@
         // 8. 光圈與火花
         // =========================================================
         const activeSparks = [];
+        const activeMists = [];
         let impactIdx = 0;
+
+        function getEffectColor(midi) {
+            const palette = [
+                new THREE.Color(0xff7ac8),
+                new THREE.Color(0xff8f70),
+                new THREE.Color(0x7fffd4),
+                new THREE.Color(0xffffff),
+                new THREE.Color(0xb391ff)
+            ];
+            return palette[Math.abs(midi) % palette.length].clone();
+        }
 
         function clearActiveSparks() {
             for (let i = activeSparks.length - 1; i >= 0; i--) {
@@ -1548,6 +1755,16 @@
                 s.points.material.dispose();
             }
             activeSparks.length = 0;
+        }
+
+        function clearActiveMists() {
+            for (let i = activeMists.length - 1; i >= 0; i--) {
+                const m = activeMists[i];
+                scene.remove(m.points);
+                m.geo.dispose();
+                m.points.material.dispose();
+            }
+            activeMists.length = 0;
         }
 
         function syncBackgroundVisualState() {
@@ -1560,18 +1777,19 @@
             if (!showLegacyEffects) {
                 bgUniforms.uImpactTimes.value.fill(-100);
                 clearActiveSparks();
+                clearActiveMists();
             }
         }
 
-        function triggerInteraction(bgPoint, midi) {
+        function triggerInteraction(source, bgPoint, midi) {
             if (usesLegacyGridEffects()) {
                 bgUniforms.uImpacts.value[impactIdx].set(bgPoint.x, bgPoint.y, 0);
                 bgUniforms.uImpactTimes.value[impactIdx] = performance.now() * 0.001;
                 impactIdx = (impactIdx + 1) % 20;
             }
 
-            highlightKey(midi, true);
-            setTimeout(() => highlightKey(midi, false), 150);
+            highlightKey(source, midi, true);
+            setTimeout(() => highlightKey(source, midi, false), 150);
         }
 
         function spawnSparks(point) {
@@ -1628,7 +1846,7 @@
             const points = new THREE.Points(
                 geo,
                 new THREE.ShaderMaterial({
-                    uniforms: { uTex: { value: colorTex } },
+                    uniforms: { uTex: { value: sparkTex } },
                     vertexShader: `
                         attribute float aSize;
                         attribute float aAlpha;
@@ -1720,6 +1938,92 @@
             });
         }
 
+        function spawnMist(point, midi) {
+            if (!usesLegacyGridEffects()) return;
+
+            const count = 3;
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(count * 3);
+            const drift = new Float32Array(count * 3);
+            const sizes = new Float32Array(count);
+            const alphas = new Float32Array(count);
+            const colors = new Float32Array(count * 3);
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 0.28;
+                const color = getEffectColor(midi);
+                color.lerp(new THREE.Color(0x6f8cff), 0.22 + Math.random() * 0.16);
+
+                pos[i * 3] = point.x + Math.cos(angle) * radius;
+                pos[i * 3 + 1] = point.y + Math.sin(angle) * radius;
+                pos[i * 3 + 2] = MIST_PLANE_Z;
+
+                drift[i * 3] = (Math.random() - 0.5) * 0.0035;
+                drift[i * 3 + 1] = 0.002 + Math.random() * 0.003;
+                drift[i * 3 + 2] = 0;
+
+                sizes[i] = 34 + Math.random() * 24;
+                alphas[i] = 0.12 + Math.random() * 0.1;
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+            geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+            geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+
+            const points = new THREE.Points(
+                geo,
+                new THREE.ShaderMaterial({
+                    uniforms: { uTex: { value: mistTex } },
+                    vertexShader: `
+                        attribute float aSize;
+                        attribute float aAlpha;
+                        attribute vec3 aColor;
+                        varying float vAlpha;
+                        varying vec3 vColor;
+
+                        void main() {
+                            vAlpha = aAlpha;
+                            vColor = aColor;
+                            vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+                            gl_PointSize = aSize * (350.0 / -mvPos.z);
+                            gl_Position = projectionMatrix * mvPos;
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform sampler2D uTex;
+                        varying float vAlpha;
+                        varying vec3 vColor;
+
+                        void main() {
+                            vec4 tex = texture2D(uTex, gl_PointCoord);
+                            gl_FragColor = vec4(vColor * tex.rgb, tex.a * vAlpha);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                })
+            );
+
+            points.renderOrder = 1;
+            scene.add(points);
+
+            activeMists.push({
+                points,
+                geo,
+                pos,
+                drift,
+                alphas,
+                alphaAttr: geo.attributes.aAlpha,
+                posAttr: geo.attributes.position
+            });
+        }
+
         // =========================================================
         // 9. 鍵盤座標對應
         // =========================================================
@@ -1779,7 +2083,7 @@
                     await initAudio();
                     const { x, y } = getKeyVisualPosition(key);
                     const sustained = currentSound === 'piano';
-                    playVisualFeedback(midi, x, y);
+                    playVisualFeedback('user', midi, x, y);
                     recordPerformanceEvent({ type: 'note-on', midi, ringX: x, ringY: y, sustained });
 
                     if (currentSound === 'piano') {
@@ -1836,7 +2140,7 @@
 
                 const midi = getMidiFromScaleKey('a', false, false) ?? 60;
                 const ringPoint = getScreenPointOnPlane(e.clientX, e.clientY, RING_PLANE_Z);
-                playVisualFeedback(midi, ringPoint.x, ringPoint.y);
+                playVisualFeedback('user', midi, ringPoint.x, ringPoint.y);
                 recordPerformanceEvent({ type: 'note-on', midi, ringX: ringPoint.x, ringY: ringPoint.y, sustained: false });
                 playMidi(midi);
             } catch (err) {
@@ -1875,7 +2179,7 @@
                         s.rvy[j] *= 0.992;
                         s.rvz[j] *= 0.992;
 
-                        s.alphas[j] *= 0.99;
+                        s.alphas[j] *= 0.975;
                         alive++;
                     }
                 }
@@ -1891,6 +2195,32 @@
                     s.geo.dispose();
                     s.points.material.dispose();
                     activeSparks.splice(i, 1);
+                }
+            }
+
+            for (let i = activeMists.length - 1; i >= 0; i--) {
+                const m = activeMists[i];
+                let alive = 0;
+
+                for (let j = 0; j < m.alphas.length; j++) {
+                    if (m.alphas[j] > 0.008) {
+                        m.pos[j * 3] += m.drift[j * 3];
+                        m.pos[j * 3 + 1] += m.drift[j * 3 + 1];
+                        m.drift[j * 3] *= 0.992;
+                        m.drift[j * 3 + 1] *= 0.996;
+                        m.alphas[j] *= 0.975;
+                        alive++;
+                    }
+                }
+
+                m.posAttr.needsUpdate = true;
+                m.alphaAttr.needsUpdate = true;
+
+                if (alive === 0) {
+                    scene.remove(m.points);
+                    m.geo.dispose();
+                    m.points.material.dispose();
+                    activeMists.splice(i, 1);
                 }
             }
 
