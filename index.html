@@ -323,17 +323,23 @@
             left: 50%;
             transform: translateX(-50%);
             width: 86%;
+            max-width: 1500px;
             height: 124px;
             display: flex;
             gap: 12px;
             z-index: 100;
             pointer-events: auto;
             align-items: stretch;
+            justify-content: center;
         }
 
         #bottom-ui.hidden {
             opacity: 0;
             pointer-events: none;
+        }
+
+        .ui-hidden {
+            display: none !important;
         }
 
         #key-panel {
@@ -451,14 +457,20 @@
                 0 15px 40px rgba(0,0,0,0.9),
                 0 0 20px rgba(0,210,255,0.05);
             display: flex;
-            overflow: hidden;
+            overflow-x: auto;
+            overflow-y: hidden;
+            justify-content: center;
         }
 
         #piano-ui {
             display: flex;
             width: 100%;
+            min-width: 100%;
             height: 100%;
             position: relative;
+            flex: 0 0 auto;
+            margin: 0 auto;
+            justify-content: center;
         }
 
         .key.white {
@@ -502,6 +514,297 @@
             border-color: #c94cff;
         }
 
+        #absolute-pitch-ui {
+            position: absolute;
+            inset: 88px 24px 24px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        #absolute-pitch-ui.active {
+            display: flex;
+        }
+
+        .absolute-pitch-panel {
+            width: min(960px, 100%);
+            padding: 28px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+                rgba(8, 14, 24, 0.86);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.08),
+                0 24px 60px rgba(0,0,0,0.48);
+            color: #f4fbff;
+            backdrop-filter: blur(12px);
+        }
+
+        .absolute-pitch-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .absolute-pitch-eyebrow {
+            font-size: 12px;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.46);
+            margin-bottom: 10px;
+        }
+
+        .absolute-pitch-title {
+            margin: 0;
+            font-size: clamp(28px, 4vw, 46px);
+            font-weight: 800;
+        }
+
+        .absolute-pitch-copy {
+            margin: 12px 0 0;
+            max-width: 52ch;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        .absolute-pitch-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            min-width: 290px;
+        }
+
+        .absolute-pitch-stat {
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .absolute-pitch-stat-label {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.46);
+        }
+
+        .absolute-pitch-stat-value {
+            margin-top: 8px;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .absolute-pitch-stat-value.timer-alert {
+            color: #ff9aa7;
+            text-shadow: 0 0 18px rgba(255, 92, 122, 0.28);
+        }
+
+        .absolute-pitch-card {
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(2, 7, 16, 0.54);
+            padding: 22px;
+        }
+
+        .absolute-pitch-prompt {
+            font-size: clamp(24px, 3vw, 38px);
+            font-weight: 800;
+            margin: 0;
+        }
+
+        .absolute-pitch-subprompt {
+            margin: 10px 0 0;
+            color: rgba(255,255,255,0.7);
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .absolute-pitch-feedback {
+            min-height: 24px;
+            margin-top: 16px;
+            color: #9ee7ff;
+            font-size: 14px;
+            letter-spacing: 0.02em;
+        }
+
+        .absolute-pitch-timer-track {
+            position: relative;
+            height: 12px;
+            margin-top: 16px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .absolute-pitch-timer-bar {
+            width: 100%;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, rgba(0,210,255,0.95), rgba(255,103,226,0.9));
+            box-shadow: 0 0 18px rgba(0, 210, 255, 0.22);
+            transform-origin: left center;
+            transition: transform 0.08s linear, background 0.18s ease;
+        }
+
+        .absolute-pitch-timer-bar.warning {
+            background: linear-gradient(90deg, rgba(255,196,103,0.95), rgba(255,95,95,0.92));
+            box-shadow: 0 0 18px rgba(255, 112, 112, 0.24);
+        }
+
+        .absolute-pitch-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .absolute-pitch-mode-switch {
+            display: inline-flex;
+            padding: 4px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .absolute-pitch-button {
+            border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            border-radius: 999px;
+            padding: 11px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .absolute-pitch-button:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.32);
+            background: rgba(255,255,255,0.12);
+        }
+
+        .absolute-pitch-button.primary {
+            background: linear-gradient(135deg, rgba(0,210,255,0.28), rgba(255,103,226,0.26));
+            border-color: rgba(143, 225, 255, 0.36);
+        }
+
+        .absolute-pitch-button.mode-button {
+            background: transparent;
+            border-color: transparent;
+            min-width: 96px;
+        }
+
+        .absolute-pitch-button.mode-button.is-selected {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.12);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+
+        .absolute-pitch-answer-grid {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .absolute-pitch-answer {
+            min-height: 72px;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            font-size: 22px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+
+        .absolute-pitch-answer-primary {
+            display: block;
+            font-size: 22px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .absolute-pitch-answer-secondary {
+            display: block;
+            margin-top: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.72);
+            letter-spacing: 0.04em;
+        }
+
+        .absolute-pitch-answer:hover:not(:disabled) {
+            transform: translateY(-2px);
+            border-color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.12);
+        }
+
+        .absolute-pitch-answer:disabled {
+            opacity: 0.55;
+            cursor: default;
+        }
+
+        .absolute-pitch-answer.correct {
+            background: rgba(53, 179, 111, 0.24);
+            border-color: rgba(116, 255, 176, 0.5);
+        }
+
+        .absolute-pitch-answer.selected {
+            background: rgba(86, 159, 255, 0.18);
+            border-color: rgba(135, 199, 255, 0.44);
+            box-shadow: 0 0 20px rgba(97, 183, 255, 0.12);
+        }
+
+        .absolute-pitch-answer.wrong {
+            background: rgba(191, 66, 86, 0.24);
+            border-color: rgba(255, 120, 142, 0.46);
+        }
+
+        .absolute-pitch-results {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 20px;
+        }
+
+        .absolute-pitch-result-box {
+            padding: 18px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .absolute-pitch-result-label {
+            font-size: 11px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.46);
+        }
+
+        .absolute-pitch-result-value {
+            margin-top: 8px;
+            font-size: 30px;
+            font-weight: 800;
+        }
+
+        .absolute-pitch-result-note {
+            margin-top: 8px;
+            color: rgba(255,255,255,0.68);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
         @media (max-width: 820px) {
             .mode-grid {
                 grid-template-columns: 1fr;
@@ -527,6 +830,24 @@
 
             #piano-container {
                 min-height: 116px;
+            }
+
+            #absolute-pitch-ui {
+                inset: 82px 12px 12px;
+            }
+
+            .absolute-pitch-panel {
+                padding: 20px;
+            }
+
+            .absolute-pitch-header {
+                flex-direction: column;
+            }
+
+            .absolute-pitch-stats,
+            .absolute-pitch-results,
+            .absolute-pitch-answer-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
     </style>
@@ -554,10 +875,10 @@
                     <button class="mode-card" id="absolute-pitch-card" data-mode="absolute-pitch" type="button">
                         <span class="mode-card-label">Mode 02</span>
                         <h2 class="mode-card-title">絕對音感測試</h2>
-                        <p class="mode-card-copy">之後可以放聽音辨識、答題流程、分數結算與難度設計，先把入口位置保留下來。</p>
+                        <p class="mode-card-copy">聽一個音，從十二個音名中快速作答。第一版先用單音辨識、固定音域和成績結算。</p>
                         <div class="mode-card-footer">
-                            <span>準備中</span>
-                            <span>Soon</span>
+                            <span>立即測試</span>
+                            <span>15 Notes</span>
                         </div>
                     </button>
                 </div>
@@ -621,6 +942,70 @@
                     <div id="piano-ui"></div>
                 </div>
             </div>
+
+            <div id="absolute-pitch-ui">
+                <div class="absolute-pitch-panel">
+                    <div class="absolute-pitch-header">
+                        <div>
+                            <div class="absolute-pitch-eyebrow">Perfect Pitch Training</div>
+                            <h2 class="absolute-pitch-title">絕對音感訓練</h2>
+                            <p class="absolute-pitch-copy" id="absolute-pitch-copy">固定使用鋼琴音色，音域在 C4 到 B4。簡單模式每題 1 個音，困難模式每題 2 個音，每題限時 10 秒，共 15 題。</p>
+                        </div>
+                        <div class="absolute-pitch-stats">
+                            <div class="absolute-pitch-stat">
+                                <div class="absolute-pitch-stat-label">Progress</div>
+                                <div class="absolute-pitch-stat-value" id="ap-progress-value">0 / 15</div>
+                            </div>
+                            <div class="absolute-pitch-stat">
+                                <div class="absolute-pitch-stat-label">Correct</div>
+                                <div class="absolute-pitch-stat-value" id="ap-correct-value">0</div>
+                            </div>
+                            <div class="absolute-pitch-stat">
+                                <div class="absolute-pitch-stat-label">Timer</div>
+                                <div class="absolute-pitch-stat-value" id="ap-timer-value">10.0s</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="absolute-pitch-card">
+                        <h3 class="absolute-pitch-prompt" id="ap-prompt">按下開始後，系統會播放第一個音。</h3>
+                        <p class="absolute-pitch-subprompt" id="ap-subprompt">測驗中可以重播一次目前題目的鋼琴音，不會改變分數，只是會保留原本的計時。</p>
+                        <div class="absolute-pitch-feedback" id="ap-feedback">準備好就開始。</div>
+                        <div class="absolute-pitch-timer-track" aria-hidden="true">
+                            <div class="absolute-pitch-timer-bar" id="ap-timer-bar"></div>
+                        </div>
+
+                        <div class="absolute-pitch-actions">
+                            <div class="absolute-pitch-mode-switch" role="group" aria-label="Training difficulty">
+                                <button class="absolute-pitch-button mode-button is-selected" id="ap-mode-easy" type="button">Easy</button>
+                                <button class="absolute-pitch-button mode-button" id="ap-mode-hard" type="button">Hard</button>
+                            </div>
+                            <button class="absolute-pitch-button primary" id="ap-start-button" type="button">Start Test</button>
+                            <button class="absolute-pitch-button" id="ap-replay-button" type="button">Replay Note</button>
+                        </div>
+
+                        <div class="absolute-pitch-answer-grid" id="ap-answer-grid"></div>
+
+                        <div class="absolute-pitch-results ui-hidden" id="ap-results">
+                            <div class="absolute-pitch-result-box">
+                                <div class="absolute-pitch-result-label">Accuracy</div>
+                                <div class="absolute-pitch-result-value" id="ap-result-accuracy">0%</div>
+                                <div class="absolute-pitch-result-note">答對比例</div>
+                            </div>
+                            <div class="absolute-pitch-result-box">
+                                <div class="absolute-pitch-result-label">Average Time</div>
+                                <div class="absolute-pitch-result-value" id="ap-result-time">0.0s</div>
+                                <div class="absolute-pitch-result-note">每題平均反應時間</div>
+                            </div>
+                            <div class="absolute-pitch-result-box">
+                                <div class="absolute-pitch-result-label">Weak Spot</div>
+                                <div class="absolute-pitch-result-value" id="ap-result-weak">-</div>
+                                <div class="absolute-pitch-result-note" id="ap-result-weak-note">完成後會顯示最常答錯的音。</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -648,6 +1033,7 @@
         let lofiVibrato = null;
         let lofiFilter = null;
         const activePianoKeyStates = new Map();
+        const activeVisualKeyStates = new Map();
         let playbackLofiVibrato = null;
         let playbackLofiFilter = null;
         const liveKeyHighlights = new Map();
@@ -664,7 +1050,26 @@
         const backgroundToggleButton = document.getElementById('background-toggle');
         const recordToggleButton = document.getElementById('record-toggle');
         const playbackToggleButton = document.getElementById('playback-toggle');
+        const modeStatus = document.getElementById('mode-status');
         const soundSelect = document.getElementById('sound-select');
+        const absolutePitchUi = document.getElementById('absolute-pitch-ui');
+        const apProgressValue = document.getElementById('ap-progress-value');
+        const apCorrectValue = document.getElementById('ap-correct-value');
+        const apTimerValue = document.getElementById('ap-timer-value');
+        const apTimerBar = document.getElementById('ap-timer-bar');
+        const apPrompt = document.getElementById('ap-prompt');
+        const apSubprompt = document.getElementById('ap-subprompt');
+        const apFeedback = document.getElementById('ap-feedback');
+        const apModeEasyButton = document.getElementById('ap-mode-easy');
+        const apModeHardButton = document.getElementById('ap-mode-hard');
+        const apStartButton = document.getElementById('ap-start-button');
+        const apReplayButton = document.getElementById('ap-replay-button');
+        const apAnswerGrid = document.getElementById('ap-answer-grid');
+        const apResults = document.getElementById('ap-results');
+        const apResultAccuracy = document.getElementById('ap-result-accuracy');
+        const apResultTime = document.getElementById('ap-result-time');
+        const apResultWeak = document.getElementById('ap-result-weak');
+        const apResultWeakNote = document.getElementById('ap-result-weak-note');
 
         const BACKGROUND_THEMES = [
             { id: 'playstation-style', label: 'PlayStation Style', color: 0x000000, exposure: 2.0 },
@@ -681,6 +1086,9 @@
         const playbackTimers = [];
         const playbackPianoNotes = new Map();
         let playbackLoopDuration = 0;
+        let absolutePitchInstrument = null;
+        let absolutePitchLofiVibrato = null;
+        let absolutePitchLofiFilter = null;
 
         // 各音色音量（單位：dB）
         const INSTRUMENT_VOLUMES = {
@@ -738,6 +1146,41 @@
             baseUrl: "./harp/"
         };
         const PIANO_RELEASE = 0.18;
+        const ABSOLUTE_PITCH_NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const ABSOLUTE_PITCH_NOTE_LABELS = {
+            'C': { solfege: 'Do', degree: '1' },
+            'C#': { solfege: '升Do', degree: '#1' },
+            'D': { solfege: 'Re', degree: '2' },
+            'D#': { solfege: '升Re', degree: '#2' },
+            'E': { solfege: 'Mi', degree: '3' },
+            'F': { solfege: 'Fa', degree: '4' },
+            'F#': { solfege: '升Fa', degree: '#4' },
+            'G': { solfege: 'Sol', degree: '5' },
+            'G#': { solfege: '升Sol', degree: '#5' },
+            'A': { solfege: 'La', degree: '6' },
+            'A#': { solfege: '升La', degree: '#6' },
+            'B': { solfege: 'Si', degree: '7' }
+        };
+        const ABSOLUTE_PITCH_TOTAL_QUESTIONS = 15;
+        const ABSOLUTE_PITCH_TIME_LIMIT = 10;
+        const ABSOLUTE_PITCH_BASE_MIDI = 60;
+        const ABSOLUTE_PITCH_MODES = {
+            easy: { label: '簡單', noteCount: 1 },
+            hard: { label: '困難', noteCount: 2 }
+        };
+        let absolutePitchQuestions = [];
+        let absolutePitchQuestionIndex = -1;
+        let absolutePitchCorrectCount = 0;
+        let absolutePitchResponses = [];
+        let absolutePitchQuestionStartedAt = 0;
+        let absolutePitchTimerId = null;
+        let absolutePitchTimerEndsAt = 0;
+        let absolutePitchCurrentMidi = null;
+        let absolutePitchAwaitingAnswer = false;
+        let absolutePitchRunning = false;
+        let absolutePitchAdvanceTimeoutId = null;
+        let absolutePitchMode = 'easy';
+        let absolutePitchSelectedNotes = [];
         const LOW_LATENCY_CONFIG = {
             lookAhead: 0.005,
             updateInterval: 0.01
@@ -1047,8 +1490,10 @@
         // =========================================================
         // 2. 鋼琴 UI
         // =========================================================
+        const pianoContainer = document.getElementById('piano-container');
         const pianoUi = document.getElementById('piano-ui');
         const allKeysMap = {};
+        let lockedPianoWidth = null;
 
         function createPianoKeys() {
             const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -1062,6 +1507,385 @@
         }
 
         createPianoKeys();
+
+        function lockPianoLayoutWidth() {
+            if (lockedPianoWidth !== null) return;
+            const measuredWidth = pianoContainer.clientWidth;
+            if (!measuredWidth) return;
+
+            lockedPianoWidth = measuredWidth * 0.92;
+            pianoUi.style.width = `${lockedPianoWidth}px`;
+            pianoUi.style.minWidth = `${lockedPianoWidth}px`;
+        }
+
+        requestAnimationFrame(() => {
+            lockPianoLayoutWidth();
+        });
+
+        function buildAbsolutePitchAnswerGrid() {
+            for (const noteName of ABSOLUTE_PITCH_NOTES) {
+                const noteLabel = ABSOLUTE_PITCH_NOTE_LABELS[noteName];
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'absolute-pitch-answer';
+                button.dataset.note = noteName;
+                button.innerHTML = `
+                    <span class="absolute-pitch-answer-primary">${noteName}</span>
+                    <span class="absolute-pitch-answer-secondary">${noteLabel.solfege} / ${noteLabel.degree}</span>
+                `;
+                button.disabled = true;
+                button.addEventListener('click', () => {
+                    submitAbsolutePitchAnswer(noteName);
+                });
+                apAnswerGrid.appendChild(button);
+            }
+        }
+
+        buildAbsolutePitchAnswerGrid();
+
+        function getAbsolutePitchAnswerButtons() {
+            return Array.from(apAnswerGrid.querySelectorAll('.absolute-pitch-answer'));
+        }
+
+        function resetAbsolutePitchAnswerButtons() {
+            for (const button of getAbsolutePitchAnswerButtons()) {
+                button.disabled = !absolutePitchAwaitingAnswer;
+                button.classList.remove('correct', 'wrong', 'selected');
+            }
+        }
+
+        function setAbsolutePitchMode(nextMode) {
+            absolutePitchMode = nextMode;
+            apModeEasyButton.classList.toggle('is-selected', nextMode === 'easy');
+            apModeHardButton.classList.toggle('is-selected', nextMode === 'hard');
+            apModeEasyButton.disabled = absolutePitchRunning;
+            apModeHardButton.disabled = absolutePitchRunning;
+            updateAbsolutePitchModeCopy();
+        }
+
+        function updateAbsolutePitchModeCopy() {
+            const modeConfig = ABSOLUTE_PITCH_MODES[absolutePitchMode];
+            const modeDescription = absolutePitchMode === 'easy'
+                ? '每題只會播放 1 個音。'
+                : '每題會隨機播放 2 個音，請把兩個都選出來。';
+
+            apFeedback.textContent = absolutePitchRunning
+                ? apFeedback.textContent
+                : `目前是${modeConfig.label}模式，${modeDescription}`;
+            apSubprompt.textContent = absolutePitchRunning
+                ? apSubprompt.textContent
+                : `固定使用鋼琴音色。${modeDescription} 每題 10 秒，時間到會自動換下一題。`;
+        }
+
+        function clearAbsolutePitchTimer() {
+            if (absolutePitchTimerId !== null) {
+                clearInterval(absolutePitchTimerId);
+                absolutePitchTimerId = null;
+            }
+        }
+
+        function clearAbsolutePitchAdvanceTimeout() {
+            if (absolutePitchAdvanceTimeoutId !== null) {
+                clearTimeout(absolutePitchAdvanceTimeoutId);
+                absolutePitchAdvanceTimeoutId = null;
+            }
+        }
+
+        function disposeAbsolutePitchInstrument() {
+            disposeLofiChain(absolutePitchLofiVibrato, absolutePitchLofiFilter);
+            if (absolutePitchInstrument && typeof absolutePitchInstrument.dispose === 'function') {
+                absolutePitchInstrument.dispose();
+            }
+            absolutePitchInstrument = null;
+            absolutePitchLofiVibrato = null;
+            absolutePitchLofiFilter = null;
+        }
+
+        async function ensureAbsolutePitchInstrument() {
+            if (absolutePitchInstrument) return;
+            const created = await createInstrumentInstance('piano');
+            absolutePitchInstrument = created.instrument;
+            absolutePitchLofiVibrato = created.lofiVibrato;
+            absolutePitchLofiFilter = created.lofiFilter;
+        }
+
+        function createAbsolutePitchQuestions() {
+            const questions = [];
+            const noteCount = ABSOLUTE_PITCH_MODES[absolutePitchMode].noteCount;
+            let previousSignature = '';
+
+            while (questions.length < ABSOLUTE_PITCH_TOTAL_QUESTIONS) {
+                const pcs = [];
+                while (pcs.length < noteCount) {
+                    const pc = Math.floor(Math.random() * ABSOLUTE_PITCH_NOTES.length);
+                    if (pcs.includes(pc)) continue;
+                    pcs.push(pc);
+                }
+
+                pcs.sort((a, b) => a - b);
+                const signature = pcs.join('-');
+                if (signature === previousSignature) continue;
+
+                previousSignature = signature;
+                questions.push({
+                    midis: pcs.map((pc) => ABSOLUTE_PITCH_BASE_MIDI + pc),
+                    noteNames: pcs.map((pc) => ABSOLUTE_PITCH_NOTES[pc])
+                });
+            }
+
+            return questions;
+        }
+
+        function updateAbsolutePitchHud() {
+            const progressCount = Math.min(Math.max(absolutePitchQuestionIndex + (absolutePitchRunning ? 1 : 0), 0), ABSOLUTE_PITCH_TOTAL_QUESTIONS);
+            apProgressValue.textContent = `${progressCount} / ${ABSOLUTE_PITCH_TOTAL_QUESTIONS}`;
+            apCorrectValue.textContent = String(absolutePitchCorrectCount);
+        }
+
+        function renderAbsolutePitchTimer() {
+            if (!absolutePitchRunning || !absolutePitchAwaitingAnswer) {
+                apTimerValue.textContent = `${ABSOLUTE_PITCH_TIME_LIMIT.toFixed(1)}s`;
+                apTimerValue.classList.remove('timer-alert');
+                apTimerBar.style.transform = 'scaleX(1)';
+                apTimerBar.classList.remove('warning');
+                return;
+            }
+
+            const remaining = Math.max(0, absolutePitchTimerEndsAt - nowSeconds());
+            const progress = Math.max(0, Math.min(1, remaining / ABSOLUTE_PITCH_TIME_LIMIT));
+            apTimerValue.textContent = `${remaining.toFixed(1)}s`;
+            apTimerValue.classList.toggle('timer-alert', remaining <= 3);
+            apTimerBar.style.transform = `scaleX(${progress})`;
+            apTimerBar.classList.toggle('warning', remaining <= 3);
+
+            if (remaining <= 0) {
+                submitAbsolutePitchAnswer(null);
+            }
+        }
+
+        function updateAbsolutePitchIdleState() {
+            absolutePitchRunning = false;
+            absolutePitchAwaitingAnswer = false;
+            absolutePitchCurrentMidi = null;
+            absolutePitchSelectedNotes = [];
+            clearAbsolutePitchTimer();
+            clearAbsolutePitchAdvanceTimeout();
+            updateAbsolutePitchHud();
+            renderAbsolutePitchTimer();
+            resetAbsolutePitchAnswerButtons();
+            setAbsolutePitchMode(absolutePitchMode);
+        }
+
+        function resetAbsolutePitchIntro() {
+            apPrompt.textContent = '按下開始後，系統會播放第一個音。';
+            apFeedback.textContent = '準備好就開始。';
+            apStartButton.textContent = 'Start Test';
+            apReplayButton.disabled = true;
+            apResults.classList.add('ui-hidden');
+            apTimerValue.textContent = `${ABSOLUTE_PITCH_TIME_LIMIT.toFixed(1)}s`;
+            apTimerValue.classList.remove('timer-alert');
+            apTimerBar.style.transform = 'scaleX(1)';
+            apTimerBar.classList.remove('warning');
+            updateAbsolutePitchModeCopy();
+        }
+
+        function getAbsolutePitchWeakSpot() {
+            const missCounts = new Map();
+
+            for (const response of absolutePitchResponses) {
+                if (response.correct) continue;
+                for (const noteName of response.correctNotes) {
+                    const count = missCounts.get(noteName) ?? 0;
+                    missCounts.set(noteName, count + 1);
+                }
+            }
+
+            let worstNote = null;
+            let worstCount = 0;
+            for (const [noteName, count] of missCounts.entries()) {
+                if (count > worstCount) {
+                    worstNote = noteName;
+                    worstCount = count;
+                }
+            }
+
+            return { worstNote, worstCount };
+        }
+
+        function showAbsolutePitchResults() {
+            const accuracy = absolutePitchResponses.length === 0
+                ? 0
+                : Math.round((absolutePitchCorrectCount / absolutePitchResponses.length) * 100);
+            const avgTime = absolutePitchResponses.length === 0
+                ? 0
+                : absolutePitchResponses.reduce((sum, response) => sum + response.responseTime, 0) / absolutePitchResponses.length;
+            const { worstNote, worstCount } = getAbsolutePitchWeakSpot();
+
+            apPrompt.textContent = `測驗完成，答對 ${absolutePitchCorrectCount} / ${ABSOLUTE_PITCH_TOTAL_QUESTIONS} 題。`;
+            apSubprompt.textContent = `本次使用${ABSOLUTE_PITCH_MODES[absolutePitchMode].label}模式，可以直接再測一次，或回自由演奏模式換個節奏。`;
+            apFeedback.textContent = accuracy >= 80
+                ? '很穩，已經有明顯的音名直覺了。'
+                : '結果會受音色熟悉度影響，重測幾輪會更有參考價值。';
+            apResults.classList.remove('ui-hidden');
+            apResultAccuracy.textContent = `${accuracy}%`;
+            apResultTime.textContent = `${avgTime.toFixed(1)}s`;
+            apResultWeak.textContent = worstNote ?? '-';
+            apResultWeakNote.textContent = worstNote
+                ? `${worstNote} 被答錯 ${worstCount} 次，可以多針對這個音做練習。`
+                : '這次沒有答錯任何音。';
+            apStartButton.textContent = 'Restart Test';
+            apReplayButton.disabled = true;
+            updateAbsolutePitchIdleState();
+            absolutePitchQuestionIndex = ABSOLUTE_PITCH_TOTAL_QUESTIONS;
+            updateAbsolutePitchHud();
+        }
+
+        async function playAbsolutePitchCurrentNote() {
+            if (absolutePitchCurrentMidi === null) return;
+            await ensureAbsolutePitchInstrument();
+            const currentQuestion = absolutePitchQuestions[absolutePitchQuestionIndex];
+            if (!currentQuestion) return;
+
+            currentQuestion.midis.forEach((midi, index) => {
+                const visualX = currentQuestion.midis.length === 1 ? 0 : (index === 0 ? -0.55 : 0.55);
+                playVisualFeedback('playback', midi, visualX, 0.3);
+                playMidiWithInstrument(absolutePitchInstrument, 'piano', midi);
+            });
+        }
+
+        async function advanceAbsolutePitchQuestion() {
+            absolutePitchQuestionIndex += 1;
+
+            if (absolutePitchQuestionIndex >= absolutePitchQuestions.length) {
+                showAbsolutePitchResults();
+                return;
+            }
+
+            const currentQuestion = absolutePitchQuestions[absolutePitchQuestionIndex];
+            absolutePitchCurrentMidi = currentQuestion?.midis[0] ?? null;
+            absolutePitchAwaitingAnswer = true;
+            absolutePitchSelectedNotes = [];
+            absolutePitchQuestionStartedAt = nowSeconds();
+            absolutePitchTimerEndsAt = absolutePitchQuestionStartedAt + ABSOLUTE_PITCH_TIME_LIMIT;
+            apPrompt.textContent = absolutePitchMode === 'easy'
+                ? `第 ${absolutePitchQuestionIndex + 1} 題，這是什麼音？`
+                : `第 ${absolutePitchQuestionIndex + 1} 題，這兩個音是什麼？`;
+            apSubprompt.textContent = absolutePitchMode === 'easy'
+                ? '請直接選擇 12 個音名之一。每題 10 秒，時間到會自動換下一題。'
+                : '請從下方選出這題出現的 2 個音。兩個都選完後會自動判定。';
+            apFeedback.textContent = '正在播放題目音。';
+            apResults.classList.add('ui-hidden');
+            updateAbsolutePitchHud();
+            resetAbsolutePitchAnswerButtons();
+            renderAbsolutePitchTimer();
+            clearAbsolutePitchTimer();
+            absolutePitchTimerId = setInterval(renderAbsolutePitchTimer, 100);
+            await playAbsolutePitchCurrentNote();
+        }
+
+        async function startAbsolutePitchTest() {
+            try {
+                await initAudio();
+                await ensureAbsolutePitchInstrument();
+            } catch (err) {
+                console.error('Absolute pitch audio init failed:', err);
+                apFeedback.textContent = '音訊初始化失敗，請重新開始或檢查瀏覽器音訊權限。';
+                return;
+            }
+
+            absolutePitchQuestions = createAbsolutePitchQuestions();
+            absolutePitchQuestionIndex = -1;
+            absolutePitchCorrectCount = 0;
+            absolutePitchResponses = [];
+            absolutePitchSelectedNotes = [];
+            absolutePitchRunning = true;
+            apStartButton.textContent = 'Restart Test';
+            apReplayButton.disabled = false;
+            setAbsolutePitchMode(absolutePitchMode);
+            apResults.classList.add('ui-hidden');
+            await advanceAbsolutePitchQuestion();
+        }
+
+        function finishAbsolutePitchQuestion(selectedNote) {
+            if (!absolutePitchAwaitingAnswer || absolutePitchCurrentMidi === null) return;
+
+            const currentQuestion = absolutePitchQuestions[absolutePitchQuestionIndex];
+            if (!currentQuestion) return;
+
+            const requiredSelections = currentQuestion.noteNames.length;
+
+            if (selectedNote !== null) {
+                if (absolutePitchSelectedNotes.includes(selectedNote)) {
+                    absolutePitchSelectedNotes = absolutePitchSelectedNotes.filter((note) => note !== selectedNote);
+                } else if (absolutePitchSelectedNotes.length < requiredSelections) {
+                    absolutePitchSelectedNotes = [...absolutePitchSelectedNotes, selectedNote];
+                }
+
+                resetAbsolutePitchAnswerButtons();
+                for (const button of getAbsolutePitchAnswerButtons()) {
+                    if (absolutePitchSelectedNotes.includes(button.dataset.note)) {
+                        button.classList.add('selected');
+                    }
+                }
+
+                if (absolutePitchSelectedNotes.length < requiredSelections) {
+                    apFeedback.textContent = absolutePitchMode === 'easy'
+                        ? `已選 ${absolutePitchSelectedNotes[0]}。`
+                        : `已選 ${absolutePitchSelectedNotes.join('、')}，還要再選 ${requiredSelections - absolutePitchSelectedNotes.length} 個音。`;
+                    return;
+                }
+            }
+
+            absolutePitchAwaitingAnswer = false;
+            clearAbsolutePitchTimer();
+            const responseTime = Math.min(ABSOLUTE_PITCH_TIME_LIMIT, nowSeconds() - absolutePitchQuestionStartedAt);
+            const selectedNotes = selectedNote === null ? [] : [...absolutePitchSelectedNotes].sort();
+            const correctNotes = [...currentQuestion.noteNames].sort();
+            const correct = selectedNotes.length === correctNotes.length
+                && selectedNotes.every((note, index) => note === correctNotes[index]);
+
+            if (correct) {
+                absolutePitchCorrectCount += 1;
+            }
+
+            absolutePitchResponses.push({
+                selectedNotes,
+                correctNotes,
+                responseTime,
+                correct
+            });
+
+            resetAbsolutePitchAnswerButtons();
+            for (const button of getAbsolutePitchAnswerButtons()) {
+                if (correctNotes.includes(button.dataset.note)) {
+                    button.classList.add('correct');
+                } else if (selectedNotes.includes(button.dataset.note) && !correct) {
+                    button.classList.add('wrong');
+                }
+            }
+
+            const answerText = correctNotes.join('、');
+            if (selectedNote === null) {
+                apFeedback.textContent = `超時，正確答案是 ${answerText}。`;
+            } else if (correct) {
+                apFeedback.textContent = `答對了，${answerText}。`;
+            } else {
+                apFeedback.textContent = `這題是 ${answerText}，你選的是 ${selectedNotes.join('、')}。`;
+            }
+
+            apCorrectValue.textContent = String(absolutePitchCorrectCount);
+            clearAbsolutePitchAdvanceTimeout();
+            absolutePitchAdvanceTimeoutId = setTimeout(() => {
+                absolutePitchAdvanceTimeoutId = null;
+                advanceAbsolutePitchQuestion().catch((err) => {
+                    console.error('Absolute pitch question advance failed:', err);
+                });
+            }, 850);
+        }
+
+        function submitAbsolutePitchAnswer(selectedNote) {
+            finishAbsolutePitchQuestion(selectedNote);
+        }
 
         function updateKeyHighlightState(midi) {
             const keyEl = allKeysMap[midi];
@@ -1108,15 +1932,26 @@
 
             const isHome = nextScreen === 'home';
             const isFreePlay = nextScreen === 'free-play';
+            const isAbsolutePitch = nextScreen === 'absolute-pitch';
+            const isExperienceScreen = isFreePlay || isAbsolutePitch;
 
             if (!isFreePlay) {
                 if (isRecording) stopRecording();
                 if (isPlaybackActive) stopPlayback();
             }
 
+            if (!isAbsolutePitch) {
+                updateAbsolutePitchIdleState();
+                resetAbsolutePitchIntro();
+            }
+
             modeScreen.classList.toggle('hidden', !isHome);
-            playbackScreen.classList.toggle('active', isFreePlay);
+            playbackScreen.classList.toggle('active', isExperienceScreen);
             bottomUi.classList.toggle('hidden', !isFreePlay);
+            absolutePitchUi.classList.toggle('active', isAbsolutePitch);
+            recordToggleButton.classList.toggle('ui-hidden', !isFreePlay);
+            playbackToggleButton.classList.toggle('ui-hidden', !isFreePlay);
+            modeStatus.textContent = isAbsolutePitch ? 'Perfect Pitch' : 'Free Play';
             document.body.style.cursor = isFreePlay ? 'crosshair' : 'default';
         }
 
@@ -1125,7 +1960,7 @@
         });
 
         absolutePitchCard.addEventListener('click', () => {
-            window.alert('絕對音感測試模式正在規劃中，先從自由演奏模式開始吧。');
+            setScreen('absolute-pitch');
         });
 
         backHomeButton.addEventListener('click', () => {
@@ -1133,6 +1968,31 @@
         });
 
         setScreen('home');
+        resetAbsolutePitchIntro();
+
+        apModeEasyButton.addEventListener('click', () => {
+            if (absolutePitchRunning) return;
+            setAbsolutePitchMode('easy');
+            resetAbsolutePitchIntro();
+        });
+
+        apModeHardButton.addEventListener('click', () => {
+            if (absolutePitchRunning) return;
+            setAbsolutePitchMode('hard');
+            resetAbsolutePitchIntro();
+        });
+
+        apStartButton.addEventListener('click', () => {
+            startAbsolutePitchTest().catch((err) => {
+                console.error('Absolute pitch start failed:', err);
+            });
+        });
+
+        apReplayButton.addEventListener('click', () => {
+            playAbsolutePitchCurrentNote().catch((err) => {
+                console.error('Absolute pitch replay failed:', err);
+            });
+        });
 
         function nowSeconds() {
             return performance.now() * 0.001;
@@ -1163,6 +2023,13 @@
 
             for (const midi of Array.from(playbackPianoNotes.keys())) {
                 releasePlaybackPianoMidi(midi);
+            }
+
+            for (const barKey of Array.from(liveDeepBlueBars.keys())) {
+                if (barKey.startsWith('playback:')) {
+                    const midi = Number(barKey.split(':')[1]);
+                    triggerDeepBlueNoteOff('playback', midi);
+                }
             }
 
             clearHighlightMap(playbackKeyHighlights);
@@ -1238,14 +2105,18 @@
 
                     if (event.type === 'note-on') {
                         playVisualFeedback('playback', event.midi, event.ringX, event.ringY);
+                        triggerDeepBlueNoteOn('playback', event.midi, !!event.sustained);
 
                         if (recordedSoundType === 'piano' && event.sustained) {
                             attackPlaybackPianoMidi(event.midi);
                         } else {
                             playMidiWithInstrument(playbackInstrument, recordedSoundType, event.midi);
                         }
-                    } else if (event.type === 'note-off' && recordedSoundType === 'piano') {
-                        releasePlaybackPianoMidi(event.midi);
+                    } else if (event.type === 'note-off') {
+                        triggerDeepBlueNoteOff('playback', event.midi);
+                        if (recordedSoundType === 'piano') {
+                            releasePlaybackPianoMidi(event.midi);
+                        }
                     }
                 }, Math.max(0, event.time * 1000));
 
@@ -1602,6 +2473,54 @@
 
         const { sparkTex, bgTex, mistTex } = createPS5Textures();
 
+        function createDeepBlueBarTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            function drawRoundedRectPath(x, y, width, height, radius) {
+                const r = Math.min(radius, width * 0.5, height * 0.5);
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + width - r, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+                ctx.lineTo(x + width, y + height - r);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+                ctx.lineTo(x + r, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+            }
+
+            const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+            gradient.addColorStop(0, 'rgba(0, 210, 255, 0.0)');
+            gradient.addColorStop(0.14, 'rgba(0, 210, 255, 0.22)');
+            gradient.addColorStop(0.52, 'rgba(116, 211, 255, 0.78)');
+            gradient.addColorStop(0.85, 'rgba(183, 235, 255, 0.95)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+            ctx.fillStyle = gradient;
+            drawRoundedRectPath(10, 0, 44, 256, 20);
+            ctx.fill();
+
+            const glow = ctx.createRadialGradient(32, 28, 0, 32, 28, 34);
+            glow.addColorStop(0, 'rgba(255,255,255,0.85)');
+            glow.addColorStop(0.5, 'rgba(164,230,255,0.38)');
+            glow.addColorStop(1, 'rgba(164,230,255,0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(32, 28, 34, 0, Math.PI * 2);
+            ctx.fill();
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+
+        const deepBlueBarTexture = createDeepBlueBarTexture();
+
         // =========================================================
         // 7. 背景波紋
         // =========================================================
@@ -1618,6 +2537,11 @@
         const MIST_PLANE_Z = -0.35;
         const RING_PLANE_Z = 0.1;
         const SPARK_PLANE_Z = 0.2;
+        const DEEP_BLUE_BAR_PLANE_Z = -1.15;
+        const activeDeepBlueBars = [];
+        const liveDeepBlueBars = new Map();
+        let deepBlueBarGroup = null;
+        let deepBlueMaskMesh = null;
 
         const bgMaterial = new THREE.ShaderMaterial({
             uniforms: bgUniforms,
@@ -1710,6 +2634,16 @@
             return bgGeometry;
         }
 
+        function getPlaneViewSize(targetZ) {
+            const aspect = window.innerWidth / window.innerHeight;
+            const fov = camera.fov * Math.PI / 180;
+            const distance = camera.position.z - targetZ;
+            const height = 2 * Math.tan(fov / 2) * distance;
+            const width = height * aspect;
+
+            return { width, height };
+        }
+
         // 初始化與重建背景點
         function updateBgPoints() {
             if (bgPoints) {
@@ -1722,6 +2656,223 @@
             bgPoints.renderOrder = 0;
             scene.add(bgPoints);
             bgPoints.visible = usesLegacyGridEffects();
+        }
+
+        function ensureDeepBlueBarGroup() {
+            if (deepBlueBarGroup) return;
+            deepBlueBarGroup = new THREE.Group();
+            deepBlueBarGroup.renderOrder = 1;
+            scene.add(deepBlueBarGroup);
+            updateDeepBlueMask();
+        }
+
+        function usesDeepBlueNoteLanes() {
+            return getCurrentBackgroundTheme().id === 'deep-blue';
+        }
+
+        function clearDeepBlueBars() {
+            for (let i = activeDeepBlueBars.length - 1; i >= 0; i--) {
+                const bar = activeDeepBlueBars[i];
+                if (deepBlueBarGroup) {
+                    deepBlueBarGroup.remove(bar.mesh);
+                }
+                bar.mesh.geometry.dispose();
+                bar.mesh.material.dispose();
+            }
+            activeDeepBlueBars.length = 0;
+            liveDeepBlueBars.clear();
+        }
+
+        function updateDeepBlueMask() {
+            if (!deepBlueBarGroup || !pianoContainer) return;
+
+            if (deepBlueMaskMesh) {
+                deepBlueBarGroup.remove(deepBlueMaskMesh);
+                deepBlueMaskMesh.geometry.dispose();
+                deepBlueMaskMesh.material.dispose();
+                deepBlueMaskMesh = null;
+            }
+
+            const containerRect = pianoContainer.getBoundingClientRect();
+            if (!containerRect.height || !containerRect.width) return;
+
+            const topLeft = getScreenPointOnPlane(0, containerRect.top, DEEP_BLUE_BAR_PLANE_Z + 0.02);
+            const bottomRight = getScreenPointOnPlane(window.innerWidth, window.innerHeight, DEEP_BLUE_BAR_PLANE_Z + 0.02);
+            const { width: viewWidth } = getPlaneViewSize(DEEP_BLUE_BAR_PLANE_Z + 0.02);
+            const maskHeight = Math.max(0.01, topLeft.y - bottomRight.y);
+
+            const geometry = new THREE.PlaneGeometry(viewWidth + 2, maskHeight);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x03111f,
+                transparent: false,
+                depthWrite: false
+            });
+
+            deepBlueMaskMesh = new THREE.Mesh(geometry, material);
+            deepBlueMaskMesh.position.set(0, bottomRight.y + maskHeight * 0.5, DEEP_BLUE_BAR_PLANE_Z + 0.02);
+            deepBlueMaskMesh.renderOrder = 2;
+            deepBlueBarGroup.add(deepBlueMaskMesh);
+        }
+
+        function getMidiLanePositionX(midi, targetZ) {
+            const { width } = getPlaneViewSize(targetZ);
+            const laneRatio = (midi - 21) / (108 - 21);
+            const innerPadding = 0.08;
+            return -width * (0.5 - innerPadding) + laneRatio * width * (1 - innerPadding * 2);
+        }
+
+        function getMidiLaunchPosition(midi, targetZ) {
+            const keyEl = allKeysMap[midi];
+            if (!keyEl) {
+                const { height } = getPlaneViewSize(targetZ);
+                return {
+                    x: getMidiLanePositionX(midi, targetZ),
+                    y: -height * 0.5 + 0.9
+                };
+            }
+
+            const rect = keyEl.getBoundingClientRect();
+            const clientX = rect.left + rect.width * 0.5;
+            const clientY = rect.top;
+            const point = getScreenPointOnPlane(clientX, clientY, targetZ);
+            return { x: point.x, y: point.y };
+        }
+
+        function getDeepBlueBarBottomY(bar) {
+            return bar.holding ? bar.entryY : bar.launchY;
+        }
+
+        function getQueuedLaunchY(midi, baseLaunchY, initialHeight) {
+            const laneGap = 0.06;
+            let queuedLaunchY = baseLaunchY;
+
+            for (const bar of activeDeepBlueBars) {
+                if (bar.midi !== midi) continue;
+
+                const barBottomY = getDeepBlueBarBottomY(bar);
+                if (barBottomY > queuedLaunchY - 2.2) {
+                    queuedLaunchY = Math.min(queuedLaunchY, barBottomY - laneGap - initialHeight);
+                }
+            }
+
+            return queuedLaunchY;
+        }
+
+        function createDeepBlueBarMesh(color, width, height) {
+            const material = new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.72,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            });
+            const geometry = new THREE.PlaneGeometry(width, height);
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.renderOrder = 1;
+            return mesh;
+        }
+
+        function getDeepBlueBarKey(source, midi) {
+            return `${source}:${midi}`;
+        }
+
+        function startDeepBlueNoteBar(source, midi, isSustained) {
+            if (!usesDeepBlueNoteLanes()) return;
+
+            ensureDeepBlueBarGroup();
+
+            const barKey = getDeepBlueBarKey(source, midi);
+            if (isSustained && liveDeepBlueBars.has(barKey)) return;
+
+            const launchPoint = getMidiLaunchPosition(midi, DEEP_BLUE_BAR_PLANE_Z);
+            const barWidth = 0.18;
+            const initialHeight = 0.03;
+            const minFloatingHeight = 0.2 + ((midi % 12) / 12) * 0.1;
+            const color = getEffectColor(midi);
+            const queuedLaunchY = getQueuedLaunchY(midi, launchPoint.y, initialHeight);
+            const mesh = createDeepBlueBarMesh(color, barWidth, initialHeight);
+            mesh.position.set(launchPoint.x, queuedLaunchY + initialHeight * 0.5, DEEP_BLUE_BAR_PLANE_Z);
+            deepBlueBarGroup.add(mesh);
+
+            const bar = {
+                key: barKey,
+                mesh,
+                midi,
+                launchY: queuedLaunchY,
+                entryY: launchPoint.y,
+                topY: queuedLaunchY + initialHeight,
+                currentHeight: initialHeight,
+                baseHeight: initialHeight,
+                velocity: 0.024,
+                fade: 1,
+                holding: isSustained,
+                sprouting: false,
+                targetHeight: minFloatingHeight,
+                minFloatingHeight,
+                growthSpeed: 0.018,
+                releaseGrowthSpeed: 0.045,
+                drift: 0
+            };
+
+            activeDeepBlueBars.push(bar);
+
+            if (isSustained) {
+                liveDeepBlueBars.set(barKey, bar);
+            }
+        }
+
+        function releaseDeepBlueNoteBar(source, midi) {
+            const barKey = getDeepBlueBarKey(source, midi);
+            const bar = liveDeepBlueBars.get(barKey);
+            if (!bar) return;
+
+            bar.holding = false;
+            bar.sprouting = false;
+            bar.targetHeight = bar.currentHeight;
+            bar.launchY = bar.entryY;
+            bar.velocity = 0.024;
+            bar.fade = 1;
+            liveDeepBlueBars.delete(barKey);
+        }
+
+        function updateDeepBlueBars() {
+            const { height } = getPlaneViewSize(DEEP_BLUE_BAR_PLANE_Z);
+            const upperBound = height * 0.5 + 6;
+
+            for (let i = activeDeepBlueBars.length - 1; i >= 0; i--) {
+                const bar = activeDeepBlueBars[i];
+                if (bar.holding) {
+                    bar.topY += bar.velocity;
+                    bar.currentHeight = Math.max(bar.baseHeight, bar.topY - bar.entryY);
+                    bar.mesh.scale.y = bar.currentHeight / bar.baseHeight;
+                    bar.mesh.position.y = bar.entryY + bar.currentHeight * 0.5;
+                    bar.mesh.material.opacity = 0.82;
+                } else if (bar.sprouting) {
+                    bar.currentHeight = Math.min(bar.targetHeight, bar.currentHeight + bar.releaseGrowthSpeed);
+                    bar.mesh.scale.y = bar.currentHeight / bar.baseHeight;
+                    bar.mesh.position.y = bar.launchY + bar.currentHeight * 0.5;
+                    bar.mesh.material.opacity = 0.82;
+
+                    if (bar.currentHeight >= bar.targetHeight - 0.0001) {
+                        bar.sprouting = false;
+                    }
+                } else {
+                    bar.mesh.position.y += bar.velocity;
+                    bar.mesh.position.x += bar.drift;
+                    bar.launchY += bar.velocity;
+                    bar.mesh.material.opacity = 0.82;
+                }
+
+                if (bar.mesh.position.y > upperBound) {
+                    if (deepBlueBarGroup) {
+                        deepBlueBarGroup.remove(bar.mesh);
+                    }
+                    bar.mesh.geometry.dispose();
+                    bar.mesh.material.dispose();
+                    activeDeepBlueBars.splice(i, 1);
+                }
+            }
         }
 
         updateBgPoints();
@@ -1769,15 +2920,24 @@
 
         function syncBackgroundVisualState() {
             const showLegacyEffects = usesLegacyGridEffects();
+            const showDeepBlueBars = usesDeepBlueNoteLanes();
 
             if (bgPoints) {
                 bgPoints.visible = showLegacyEffects;
             }
 
+            ensureDeepBlueBarGroup();
+            deepBlueBarGroup.visible = showDeepBlueBars;
+            updateDeepBlueMask();
+
             if (!showLegacyEffects) {
                 bgUniforms.uImpactTimes.value.fill(-100);
                 clearActiveSparks();
                 clearActiveMists();
+            }
+
+            if (!showDeepBlueBars) {
+                clearDeepBlueBars();
             }
         }
 
@@ -1790,6 +2950,14 @@
 
             highlightKey(source, midi, true);
             setTimeout(() => highlightKey(source, midi, false), 150);
+        }
+
+        function triggerDeepBlueNoteOn(source, midi, isSustained = false) {
+            startDeepBlueNoteBar(source, midi, isSustained);
+        }
+
+        function triggerDeepBlueNoteOff(source, midi) {
+            releaseDeepBlueNoteBar(source, midi);
         }
 
         function spawnSparks(point) {
@@ -2082,9 +3250,11 @@
                 try {
                     await initAudio();
                     const { x, y } = getKeyVisualPosition(key);
-                    const sustained = currentSound === 'piano';
+                    const sustained = true;
                     playVisualFeedback('user', midi, x, y);
+                    triggerDeepBlueNoteOn('user', midi, sustained);
                     recordPerformanceEvent({ type: 'note-on', midi, ringX: x, ringY: y, sustained });
+                    activeVisualKeyStates.set(key, { midi });
 
                     if (currentSound === 'piano') {
                         playPianoKeyDown(key, midi);
@@ -2101,12 +3271,15 @@
             if (!isInteractivePlayback()) return;
 
             const key = e.key.toLowerCase();
+            const visualState = activeVisualKeyStates.get(key);
+
+            if (visualState) {
+                recordPerformanceEvent({ type: 'note-off', midi: visualState.midi });
+                triggerDeepBlueNoteOff('user', visualState.midi);
+                activeVisualKeyStates.delete(key);
+            }
 
             if (currentSound === 'piano' && activePianoKeyStates.has(key)) {
-                const state = activePianoKeyStates.get(key);
-                if (state) {
-                    recordPerformanceEvent({ type: 'note-off', midi: state.midi });
-                }
                 releasePianoKey(key);
             }
         });
@@ -2141,6 +3314,7 @@
                 const midi = getMidiFromScaleKey('a', false, false) ?? 60;
                 const ringPoint = getScreenPointOnPlane(e.clientX, e.clientY, RING_PLANE_Z);
                 playVisualFeedback('user', midi, ringPoint.x, ringPoint.y);
+                triggerDeepBlueNoteOn('user', midi, false);
                 recordPerformanceEvent({ type: 'note-on', midi, ringX: ringPoint.x, ringY: ringPoint.y, sustained: false });
                 playMidi(midi);
             } catch (err) {
@@ -2224,16 +3398,20 @@
                 }
             }
 
+            updateDeepBlueBars();
+
             renderer.render(scene, camera);
         }
 
         animate();
 
         window.addEventListener('resize', () => {
+            lockPianoLayoutWidth();
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             updateBgPoints();
+            updateDeepBlueMask();
         });
     </script>
 </body>
