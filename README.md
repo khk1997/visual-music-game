@@ -1,8 +1,8 @@
-# visual-music-game
+# Visual Music Game
 
 Live demo: https://khk1997.github.io/visual-music-game/
 
-A browser-based music visual playground built with HTML, Tone.js, and Three.js.
+A browser-based visual music game built with HTML, Tone.js, and Three.js.
 
 ## Play
 
