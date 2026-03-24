@@ -199,12 +199,12 @@
 
         @keyframes floating-symbol-pulse {
             0%, 100% {
-                opacity: 0.34;
-                filter: drop-shadow(0 0 0 rgba(255,255,255,0));
+                opacity: 0.56;
+                filter: drop-shadow(0 0 6px rgba(255,255,255,0.14));
             }
             50% {
-                opacity: 0.66;
-                filter: drop-shadow(0 0 18px rgba(255,255,255,0.2));
+                opacity: 0.92;
+                filter: drop-shadow(0 0 24px rgba(255,255,255,0.34));
             }
         }
 
@@ -220,8 +220,10 @@
             position: absolute;
             display: grid;
             place-items: center;
-            color: rgba(255,255,255,0.38);
-            text-shadow: 0 0 24px rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.58);
+            text-shadow:
+                0 0 12px rgba(255,255,255,0.18),
+                0 0 28px rgba(255,255,255,0.14);
             animation:
                 floating-symbol-drift var(--drift-duration, 18s) ease-in-out infinite alternate,
                 floating-symbol-pulse var(--pulse-duration, 6s) ease-in-out infinite;
@@ -244,46 +246,47 @@
             width: var(--size, 56px);
             height: var(--size, 56px);
             border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.18);
-            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.28);
+            background: rgba(255,255,255,0.1);
             box-shadow:
-                inset 0 1px 0 rgba(255,255,255,0.08),
-                0 0 16px rgba(255,255,255,0.05);
+                inset 0 1px 0 rgba(255,255,255,0.16),
+                0 0 18px rgba(255,255,255,0.12),
+                0 0 32px rgba(86, 180, 255, 0.1);
             font-size: calc(var(--size, 56px) * 0.34);
             font-weight: 700;
             letter-spacing: 0.04em;
         }
 
         .floating-symbol.symbol-triangle {
-            color: rgba(112, 194, 255, 0.42);
+            color: rgba(98, 208, 255, 0.78);
         }
 
         .floating-symbol.symbol-circle {
-            color: rgba(255,255,255,0.34);
+            color: rgba(255, 245, 163, 0.68);
         }
 
         .floating-symbol.symbol-cross {
-            color: rgba(86, 209, 198, 0.38);
+            color: rgba(78, 241, 214, 0.76);
         }
 
         .floating-symbol.symbol-square {
-            color: rgba(116, 145, 255, 0.38);
+            color: rgba(126, 147, 255, 0.76);
         }
 
         .floating-symbol.symbol-a {
-            color: rgba(255,255,255,0.38);
+            color: rgba(255,255,255,0.72);
         }
 
         .floating-symbol.symbol-b {
-            color: rgba(255, 107, 107, 0.4);
+            color: rgba(255, 116, 116, 0.78);
         }
 
         .floating-symbol.symbol-x {
-            color: rgba(97, 160, 255, 0.42);
+            color: rgba(94, 171, 255, 0.8);
         }
 
         .floating-symbol.symbol-y {
-            color: rgba(72, 214, 174, 0.4);
+            color: rgba(74, 234, 186, 0.78);
         }
 
         .mode-panel {
@@ -336,18 +339,22 @@
         .mode-card {
             position: relative;
             min-height: 300px;
-            padding: 22px 22px 24px;
+            padding: 24px 22px 18px;
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 28px;
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)),
                 linear-gradient(180deg, #2f3338, #22262b 58%, #1b1f23 100%);
+            background-clip: padding-box, padding-box;
             box-shadow:
                 inset 0 1px 0 rgba(255,255,255,0.06),
                 0 18px 36px rgba(0,0,0,0.24);
             color: #fff;
             text-align: left;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
             transition:
                 transform 0.26s ease,
                 opacity 0.26s ease,
@@ -356,6 +363,17 @@
                 background 0.26s ease,
                 filter 0.26s ease;
             overflow: hidden;
+        }
+
+        .mode-card-body {
+            position: relative;
+            z-index: 4;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            padding-top: 18px;
         }
 
         .mode-card::after {
@@ -370,6 +388,7 @@
                 linear-gradient(0deg, rgba(255,255,255,0.03), transparent 24%);
             transition: opacity 0.26s ease, border-color 0.26s ease, transform 0.26s ease;
             pointer-events: none;
+            z-index: 1;
         }
 
         .mode-card::before {
@@ -378,6 +397,43 @@
             inset: 0;
             opacity: 0.95;
             pointer-events: none;
+            z-index: 0;
+        }
+
+        .mode-card > .mode-card-border-glow,
+        .mode-card > .mode-card-border-glow-blur {
+            position: absolute;
+            inset: -2px;
+            border-radius: inherit;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+
+        .mode-card > .mode-card-border-glow {
+            z-index: 2;
+            inset: -3px;
+            border-radius: 31px;
+            border: 3px solid transparent;
+            border-top-color: rgba(126, 246, 255, 0.98);
+            border-right-color: rgba(63, 136, 255, 0.98);
+            border-bottom-color: rgba(255, 146, 224, 0.94);
+            border-left-color: rgba(88, 217, 255, 0.98);
+            box-shadow:
+                0 0 0 1px rgba(68, 203, 255, 0.28),
+                0 0 18px rgba(48, 144, 255, 0.2);
+        }
+
+        .mode-card > .mode-card-border-glow-blur {
+            z-index: 1;
+            inset: -4px;
+            border-radius: 32px;
+            border: 5px solid transparent;
+            border-top-color: rgba(125, 245, 255, 0.34);
+            border-right-color: rgba(68, 203, 255, 0.26);
+            border-bottom-color: rgba(255, 146, 224, 0.22);
+            border-left-color: rgba(94, 171, 255, 0.28);
+            filter: blur(8px);
         }
 
         .mode-card > .mode-card-sheen {
@@ -391,6 +447,12 @@
             opacity: 0;
             pointer-events: none;
             mix-blend-mode: screen;
+            z-index: 3;
+        }
+
+        .mode-card-footer {
+            position: relative;
+            z-index: 4;
         }
 
         .mode-card[data-mode="free-play"]::before {
@@ -414,19 +476,39 @@
         .mode-card:hover,
         .mode-card:focus-visible {
             transform: translateY(-6px);
-            border-color: rgba(255,255,255,0.18);
+            border: 3px solid transparent;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)) padding-box,
+                linear-gradient(180deg, #2f3338, #22262b 58%, #1b1f23 100%) padding-box,
+                linear-gradient(
+                    135deg,
+                    rgba(120, 245, 255, 0.98) 0%,
+                    rgba(64, 207, 255, 0.98) 20%,
+                    rgba(38, 118, 255, 0.99) 54%,
+                    rgba(76, 94, 255, 0.97) 76%,
+                    rgba(255, 168, 229, 0.95) 100%
+                ) border-box;
+            background-clip: padding-box, padding-box, border-box;
             box-shadow:
-                inset 0 1px 0 rgba(255,255,255,0.1),
                 0 24px 42px rgba(0,0,0,0.3),
-                0 0 14px rgba(255,255,255,0.05);
-            filter: brightness(1.04);
-            animation: mode-card-pulse 0.34s ease 2;
+                0 0 0 1px rgba(95, 219, 255, 0.22),
+                0 0 18px rgba(63, 143, 255, 0.22),
+                0 0 32px rgba(255, 154, 223, 0.12);
+            filter: brightness(1.03);
         }
 
         .mode-card:hover::after,
         .mode-card:focus-visible::after {
+            opacity: 0.32;
+            border-color: transparent;
+        }
+
+        .mode-card:hover > .mode-card-border-glow,
+        .mode-card:hover > .mode-card-border-glow-blur,
+        .mode-card:focus-visible > .mode-card-border-glow,
+        .mode-card:focus-visible > .mode-card-border-glow-blur {
             opacity: 1;
-            border-color: rgba(255,255,255,0.16);
+            transform: scale(1.01);
         }
 
         .mode-card:hover > .mode-card-sheen,
@@ -497,14 +579,17 @@
         }
 
         .mode-card-title {
-            margin: 18px 0 10px;
+            margin: 0;
+            min-height: 2.1em;
             font-size: clamp(25px, 2.5vw, 34px);
             font-weight: 700;
+            line-height: 1.2;
             letter-spacing: 0.01em;
         }
 
         .mode-card-copy {
             margin: 0;
+            min-height: 3.8em;
             max-width: 29ch;
             font-size: 14px;
             line-height: 1.75;
@@ -512,10 +597,9 @@
         }
 
         .mode-card-footer {
-            position: absolute;
-            left: 22px;
-            right: 22px;
-            bottom: 20px;
+            width: 100%;
+            margin-top: auto;
+            padding-top: 10px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -731,6 +815,11 @@
         #mode-select option {
             background: #222;
             color: #fff;
+        }
+
+        #sound-select:disabled {
+            opacity: 0.62;
+            cursor: wait;
         }
 
         #piano-container {
@@ -1289,30 +1378,42 @@
                 </div>
                 <div class="mode-grid">
                     <button class="mode-card" id="free-play-card" data-mode="free-play" type="button">
+                        <span class="mode-card-border-glow-blur" aria-hidden="true"></span>
+                        <span class="mode-card-border-glow" aria-hidden="true"></span>
                         <span class="mode-card-sheen" aria-hidden="true"></span>
-                        <span class="mode-card-label">Mode 01</span>
-                        <h2 class="mode-card-title">自由演奏模式</h2>
-                        <p class="mode-card-copy">進入即時音樂遊玩畫面，用鍵盤或滑鼠觸發音符、火花和背景波浪。</p>
+                        <div class="mode-card-body">
+                            <span class="mode-card-label">Mode 01</span>
+                            <h2 class="mode-card-title">自由演奏模式</h2>
+                            <p class="mode-card-copy">進入即時音樂遊玩畫面，用鍵盤或滑鼠觸發音符、火花和背景波浪。</p>
+                        </div>
                         <div class="mode-card-footer">
                             <span>立即開始</span>
                             <span>Enter</span>
                         </div>
                     </button>
                     <button class="mode-card" id="absolute-pitch-card" data-mode="absolute-pitch" type="button">
+                        <span class="mode-card-border-glow-blur" aria-hidden="true"></span>
+                        <span class="mode-card-border-glow" aria-hidden="true"></span>
                         <span class="mode-card-sheen" aria-hidden="true"></span>
-                        <span class="mode-card-label">Mode 02</span>
-                        <h2 class="mode-card-title">音感練習</h2>
-                        <p class="mode-card-copy">聽一個音，從十二個音名中快速作答。第一版先用單音辨識、固定音域和成績結算。</p>
+                        <div class="mode-card-body">
+                            <span class="mode-card-label">Mode 02</span>
+                            <h2 class="mode-card-title">音感練習</h2>
+                            <p class="mode-card-copy">聽一個音，從十二個音名中快速作答。第一版先用單音辨識、固定音域和成績結算。</p>
+                        </div>
                         <div class="mode-card-footer">
                             <span>立即測試</span>
                             <span>15 Notes</span>
                         </div>
                     </button>
                     <button class="mode-card" id="rhythm-game-card" data-mode="rhythm-game" type="button">
+                        <span class="mode-card-border-glow-blur" aria-hidden="true"></span>
+                        <span class="mode-card-border-glow" aria-hidden="true"></span>
                         <span class="mode-card-sheen" aria-hidden="true"></span>
-                        <span class="mode-card-label">Mode 03</span>
-                        <h2 class="mode-card-title">節奏遊戲</h2>
-                        <p class="mode-card-copy">先預留新的遊戲入口，之後可以放下落音符、打擊判定或跟拍挑戰等玩法。</p>
+                        <div class="mode-card-body">
+                            <span class="mode-card-label">Mode 03</span>
+                            <h2 class="mode-card-title">節奏遊戲</h2>
+                            <p class="mode-card-copy">開發中</p>
+                        </div>
                         <div class="mode-card-footer">
                             <span>搶先進入</span>
                             <span>Coming Soon</span>
@@ -1446,13 +1547,13 @@
 
             <div id="rhythm-game-ui">
                 <div class="rhythm-game-panel">
-                    <div class="rhythm-game-eyebrow">Rhythm Game Preview</div>
-                    <h2 class="rhythm-game-title">節奏遊戲入口</h2>
-                    <p class="rhythm-game-copy">這裡先保留成主頁的新分類入口，方便你之後再往下接玩法、選歌流程、判定系統或介面設計。現在先維持簡單，確認導覽路徑已經開好。</p>
+                    <div class="rhythm-game-eyebrow">Rhythm Game</div>
+                    <h2 class="rhythm-game-title">開發中</h2>
+                    <p class="rhythm-game-copy">開發中</p>
                     <div class="rhythm-game-preview">
-                        <div class="rhythm-game-preview-label">Next Step</div>
-                        <div class="rhythm-game-preview-title">內容尚未定義</div>
-                        <p class="rhythm-game-preview-copy">之後可以從這裡延伸成獨立模式頁，例如加入 BPM 選擇、譜面列表、落點軌道，或先做一個單鍵節奏挑戰的 MVP。</p>
+                        <div class="rhythm-game-preview-label">Status</div>
+                        <div class="rhythm-game-preview-title">開發中</div>
+                        <p class="rhythm-game-preview-copy">開發中</p>
                     </div>
                 </div>
             </div>
@@ -1479,6 +1580,8 @@
         let limiter = null;
         let audioStarted = false;
         let currentSound = 'synth';
+        let isInstrumentLoading = false;
+        let instrumentSwitchToken = 0;
         let recordedSoundType = 'synth';
         let lofiVibrato = null;
         let lofiFilter = null;
@@ -1696,6 +1799,22 @@
             }
         }
 
+        async function playBackHomeClickSound() {
+            try {
+                if (!audioStarted) {
+                    await initAudio();
+                }
+
+                const clickSynth = ensureUiClickSynth();
+                const triggerTime = getTriggerTime();
+                clickSynth.triggerAttackRelease('D6', 0.045, triggerTime, 0.7);
+                clickSynth.triggerAttackRelease('A5', 0.055, triggerTime + 0.032, 0.62);
+                clickSynth.triggerAttackRelease('E5', 0.1, triggerTime + 0.078, 0.82);
+            } catch (err) {
+                console.error('Back home click sound failed:', err);
+            }
+        }
+
         function applyInstrumentVolumeTo(targetInstrument, type) {
             if (!targetInstrument || !targetInstrument.volume) return;
             targetInstrument.volume.value = INSTRUMENT_VOLUMES[type] ?? 0;
@@ -1730,6 +1849,42 @@
             playbackLofiVibrato = null;
             playbackLofiFilter = null;
             playbackPianoNotes.clear();
+        }
+
+        function setInstrumentLoadingState(loading) {
+            isInstrumentLoading = loading;
+            soundSelect.disabled = loading;
+        }
+
+        function stopLiveInputPlayback() {
+            if (instrument && typeof instrument.releaseAll === 'function') {
+                instrument.releaseAll(getTriggerTime());
+            }
+
+            activePianoKeyStates.clear();
+
+            for (const [key, visualState] of Array.from(activeVisualKeyStates.entries())) {
+                recordPerformanceEvent({ type: 'note-off', midi: visualState.midi });
+                triggerDeepBlueNoteOff('user', visualState.midi);
+                activeVisualKeyStates.delete(key);
+            }
+        }
+
+        function swapCurrentInstrument(created, type) {
+            const previousInstrument = instrument;
+            const previousLofiVibrato = lofiVibrato;
+            const previousLofiFilter = lofiFilter;
+
+            instrument = created.instrument;
+            lofiVibrato = created.lofiVibrato;
+            lofiFilter = created.lofiFilter;
+            currentSound = type;
+
+            disposeLofiChain(previousLofiVibrato, previousLofiFilter);
+            if (previousInstrument && typeof previousInstrument.dispose === 'function') {
+                previousInstrument.dispose();
+            }
+            activePianoKeyStates.clear();
         }
 
         async function createInstrumentInstance(type) {
@@ -1853,21 +2008,13 @@
         }
 
         async function createPianoInstrument() {
-            disposeCurrentInstrument();
-
             const created = await createInstrumentInstance('piano');
-            instrument = created.instrument;
-            lofiVibrato = created.lofiVibrato;
-            lofiFilter = created.lofiFilter;
+            swapCurrentInstrument(created, 'piano');
         }
 
         async function createHarpInstrument() {
-            disposeCurrentInstrument();
-
             const created = await createInstrumentInstance('harp');
-            instrument = created.instrument;
-            lofiVibrato = created.lofiVibrato;
-            lofiFilter = created.lofiFilter;
+            swapCurrentInstrument(created, 'harp');
         }
 
         async function createPlaybackInstrument(type) {
@@ -1887,14 +2034,9 @@
                 await createHarpInstrument();
             }
             else {
-                disposeCurrentInstrument();
                 const created = await createInstrumentInstance(type);
-                instrument = created.instrument;
-                lofiVibrato = created.lofiVibrato;
-                lofiFilter = created.lofiFilter;
+                swapCurrentInstrument(created, type);
             }
-
-            currentSound = type;
         }
 
         async function initAudio() {
@@ -1914,19 +2056,28 @@
         }
 
         soundSelect.addEventListener('change', async () => {
-            currentSound = soundSelect.value;
+            const selectedSound = soundSelect.value;
 
             if (!audioStarted) return;
 
+            const switchToken = ++instrumentSwitchToken;
+            stopLiveInputPlayback();
+            setInstrumentLoadingState(true);
+
             try {
-                await createInstrument(currentSound);
+                await createInstrument(selectedSound);
             } catch (err) {
                 console.error('Failed to switch instrument:', err);
+                soundSelect.value = currentSound;
+            } finally {
+                if (switchToken === instrumentSwitchToken) {
+                    setInstrumentLoadingState(false);
+                }
             }
         });
 
         function playMidiWithInstrument(targetInstrument, soundType, midi) {
-            if (!targetInstrument) return;
+            if (!targetInstrument || isInstrumentLoading) return;
             const note = Tone.Frequency(midi, "midi").toNote();
             const triggerTime = getTriggerTime();
 
@@ -1952,7 +2103,7 @@
         }
 
         function playPianoKeyDown(key, midi) {
-            if (!instrument || currentSound !== 'piano' || activePianoKeyStates.has(key)) return;
+            if (!instrument || isInstrumentLoading || currentSound !== 'piano' || activePianoKeyStates.has(key)) return;
 
             const note = Tone.Frequency(midi, "midi").toNote();
             const startTime = getTriggerTime();
@@ -2547,6 +2698,7 @@
         });
 
         backHomeButton.addEventListener('click', () => {
+            void playBackHomeClickSound();
             setScreen('home');
         });
 
@@ -3912,6 +4064,7 @@
 
                 try {
                     await initAudio();
+                    if (isInstrumentLoading) return;
                     const { x, y } = getKeyVisualPosition(key);
                     const sustained = true;
                     playVisualFeedback('user', midi, x, y);
@@ -3973,6 +4126,7 @@
 
             try {
                 await initAudio();
+                if (isInstrumentLoading) return;
 
                 const midi = getMidiFromScaleKey('a', false, false) ?? 60;
                 const ringPoint = getScreenPointOnPlane(e.clientX, e.clientY, RING_PLANE_Z);
