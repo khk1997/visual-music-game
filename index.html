@@ -758,6 +758,12 @@
             text-align: left;
         }
 
+        #background-toggle.is-readonly {
+            cursor: default;
+            pointer-events: none;
+            opacity: 1;
+        }
+
         #mode-status {
             color: rgba(255,255,255,0.68);
             font-size: 12px;
@@ -803,10 +809,6 @@
             box-shadow: none;
             transform: translate(-50%, -50%);
             z-index: 130;
-        }
-
-        #playback-screen.theme-selecting #theme-panel-close {
-            display: none;
         }
 
         #playback-screen.theme-selecting .theme-list {
@@ -1107,10 +1109,6 @@
             line-height: 1.5;
             color: rgba(255,255,255,0.78);
             max-width: 44ch;
-        }
-
-        #theme-panel-close {
-            align-self: flex-start;
         }
 
         #bottom-ui {
@@ -1918,7 +1916,6 @@
                             經典霧化符號背景，亮度高、對比強，適合自由演奏時快速看清互動反饋。
                         </p>
                     </div>
-                    <button id="theme-panel-close" class="top-bar-button" type="button">Close</button>
                 </div>
             </div>
 
@@ -2103,7 +2100,6 @@
         const themePreviewMedia = document.getElementById('theme-preview-media');
         const themePreviewTitle = document.getElementById('theme-preview-title');
         const themePreviewDescription = document.getElementById('theme-preview-description');
-        const themePanelCloseButton = document.getElementById('theme-panel-close');
         const recordToggleButton = document.getElementById('record-toggle');
         const playbackToggleButton = document.getElementById('playback-toggle');
         const modeStatus = document.getElementById('mode-status');
@@ -3667,12 +3663,6 @@
             backgroundToggleButton.classList.add('is-active');
         }
 
-        function toggleThemePanel() {
-            if (!themePanel) return;
-            if (themePanel.classList.contains('is-open')) closeThemePanel();
-            else openThemePanel();
-        }
-
         function setupThemePanel() {
             if (!themeList) return;
             themeList.innerHTML = '';
@@ -3701,13 +3691,7 @@
                     updateThemePanelSelection();
                 });
                 button.addEventListener('click', () => {
-                    if (currentScreen === 'free-play' && isFreePlayThemeSelection) {
-                        startThemeSelectionTransition(index);
-                    } else {
-                        hoveredThemeIndex = null;
-                        applyBackgroundTheme(index);
-                        closeThemePanel();
-                    }
+                    startThemeSelectionTransition(index);
                 });
                 item.appendChild(button);
                 themeList.appendChild(item);
@@ -3727,31 +3711,7 @@
             }
         }
 
-        backgroundToggleButton.addEventListener('click', () => {
-            toggleThemePanel();
-        });
-
-        if (themePanelCloseButton) {
-            themePanelCloseButton.addEventListener('click', () => {
-                closeThemePanel();
-            });
-        }
-
-        document.addEventListener('click', (event) => {
-            if (!themePanel || !themePanel.classList.contains('is-open')) return;
-            if (isFreePlayThemeSelection) return;
-            const target = event.target;
-            if (!(target instanceof Element)) return;
-            if (themePanel.contains(target) || backgroundToggleButton.contains(target)) return;
-            closeThemePanel();
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (isFreePlayThemeSelection) return;
-            if (event.key === 'Escape' && themePanel && themePanel.classList.contains('is-open')) {
-                closeThemePanel();
-            }
-        });
+        backgroundToggleButton.classList.add('is-readonly');
 
         setupThemePanel();
         applyBackgroundTheme(currentBackgroundIndex);
