@@ -70,6 +70,9 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 
         let currentBackgroundIndex = 0;
         let hoveredThemeIndex = null;
+        let themePanelActiveIndex = 0;
+        let themeDragState = null;
+        let suppressThemeClickUntil = 0;
         let backgroundVisualsReady = false;
         let isRecording = false;
         let recordingStartTime = 0;
@@ -1023,11 +1026,56 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             return getCurrentBackgroundTheme().id === 'playstation-style';
         }
 
+        function getThemePanelPreviewIndex() {
+            return hoveredThemeIndex === null ? themePanelActiveIndex : hoveredThemeIndex;
+        }
+
+        function updateThemeListVisuals(activeIndex) {
+            if (!themeList) return;
+            const themeButtons = themeList.querySelectorAll('.theme-list-item');
+
+            for (const button of themeButtons) {
+                const buttonIndex = Number(button.dataset.themeIndex);
+                const offset = buttonIndex - activeIndex;
+                const absOffset = Math.abs(offset);
+                const clampedOffset = Math.max(-3, Math.min(3, offset));
+                const translateY = clampedOffset * 96;
+                const rotateX = clampedOffset * -16;
+                const scale = 1 - Math.min(absOffset, 3) * 0.08;
+                const opacity = absOffset === 0
+                    ? 1
+                    : absOffset === 1
+                        ? 0.78
+                        : absOffset === 2
+                            ? 0.32
+                            : 0.08;
+
+                button.style.transform = `translateY(${translateY}px) rotateX(${rotateX}deg) scale(${scale})`;
+                button.style.opacity = String(absOffset > 3 ? 0 : opacity);
+                button.style.filter = absOffset === 0
+                    ? 'brightness(1.03)'
+                    : `blur(${Math.min(absOffset, 3) * 0.65}px) brightness(${1 - Math.min(absOffset, 3) * 0.08})`;
+                button.style.zIndex = String(30 - Math.min(absOffset, 30));
+                button.classList.toggle('is-faded', absOffset > 2);
+                button.classList.toggle('is-active', buttonIndex === activeIndex);
+                button.parentElement?.style.setProperty('z-index', String(30 - Math.min(absOffset, 30)));
+            }
+        }
+
+        function setThemePanelActiveIndex(index, options = {}) {
+            const { syncHover = true } = options;
+            const boundedIndex = Math.max(0, Math.min(BACKGROUND_THEMES.length - 1, index));
+            themePanelActiveIndex = boundedIndex;
+            if (syncHover) {
+                hoveredThemeIndex = null;
+            }
+            updateThemePanelSelection();
+        }
+
         function updateThemePanelSelection() {
             const currentTheme = getCurrentBackgroundTheme();
-            const previewTheme = hoveredThemeIndex === null
-                ? currentTheme
-                : BACKGROUND_THEMES[(hoveredThemeIndex + BACKGROUND_THEMES.length) % BACKGROUND_THEMES.length];
+            const previewIndex = getThemePanelPreviewIndex();
+            const previewTheme = BACKGROUND_THEMES[(previewIndex + BACKGROUND_THEMES.length) % BACKGROUND_THEMES.length];
             backgroundToggleButton.textContent = `Theme: ${currentTheme.label}`;
 
             if (themePreviewTitle) {
@@ -1049,6 +1097,7 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
                 const buttonIndex = Number(button.dataset.themeIndex);
                 button.classList.toggle('is-selected', shouldShowSelected && buttonIndex === currentBackgroundIndex);
             }
+            updateThemeListVisuals(previewIndex);
         }
 
         function closeThemePanel() {
@@ -1057,6 +1106,7 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             themePanel.setAttribute('aria-hidden', 'true');
             backgroundToggleButton.classList.remove('is-active');
             hoveredThemeIndex = null;
+            themeDragState = null;
             updateThemePanelSelection();
         }
 
@@ -1074,7 +1124,11 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             if (!themeList) return;
             const themeButtons = themeList.querySelectorAll('.theme-list-item');
             for (const button of themeButtons) {
-                button.classList.remove('is-selected', 'is-muted');
+                button.classList.remove('is-selected', 'is-muted', 'is-active', 'is-faded');
+                button.style.removeProperty('transform');
+                button.style.removeProperty('opacity');
+                button.style.removeProperty('filter');
+                button.style.removeProperty('z-index');
             }
         }
 
@@ -1117,41 +1171,120 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             themePanel.classList.add('is-open');
             themePanel.setAttribute('aria-hidden', 'false');
             backgroundToggleButton.classList.add('is-active');
+            themePanelActiveIndex = currentBackgroundIndex;
+            hoveredThemeIndex = null;
+            updateThemePanelSelection();
         }
 
         function setupThemePanel() {
             if (!themeList) return;
             themeList.innerHTML = '';
 
+            const handleThemeDragMove = (clientY) => {
+                if (!themeDragState) return;
+                const deltaY = clientY - themeDragState.startY;
+                const nextIndex = Math.max(
+                    0,
+                    Math.min(
+                        BACKGROUND_THEMES.length - 1,
+                        themeDragState.startIndex - Math.round(deltaY / 86)
+                    )
+                );
+
+                if (nextIndex !== themePanelActiveIndex) {
+                    themePanelActiveIndex = nextIndex;
+                    hoveredThemeIndex = null;
+                    updateThemePanelSelection();
+                }
+
+                if (Math.abs(deltaY) > 10) {
+                    themeDragState.dragged = true;
+                }
+            };
+
+            themeList.addEventListener('pointerdown', (event) => {
+                if (!(event.target instanceof HTMLElement)) return;
+                if (!event.target.closest('.theme-list-item')) return;
+
+                themeDragState = {
+                    pointerId: event.pointerId,
+                    startY: event.clientY,
+                    startIndex: themePanelActiveIndex,
+                    dragged: false,
+                    targetIndex: Number((event.target.closest('.theme-list-item'))?.dataset.themeIndex ?? -1),
+                    targetWasActive: event.target.closest('.theme-list-item')?.classList.contains('is-active') ?? false
+                };
+                themeList.setPointerCapture(event.pointerId);
+            });
+
+            themeList.addEventListener('pointermove', (event) => {
+                if (!themeDragState || themeDragState.pointerId !== event.pointerId) return;
+                handleThemeDragMove(event.clientY);
+            });
+
+            const finishThemeDrag = (event) => {
+                if (!themeDragState || themeDragState.pointerId !== event.pointerId) return;
+
+                if (themeDragState.dragged) {
+                    suppressThemeClickUntil = performance.now() + 180;
+                } else if (
+                    themeDragState.targetIndex >= 0
+                    && performance.now() >= suppressThemeClickUntil
+                ) {
+                    if (!themeDragState.targetWasActive || themePanelActiveIndex !== themeDragState.targetIndex) {
+                        setThemePanelActiveIndex(themeDragState.targetIndex);
+                    } else {
+                        startThemeSelectionTransition(themeDragState.targetIndex);
+                    }
+                }
+                if (themeList.hasPointerCapture(event.pointerId)) {
+                    themeList.releasePointerCapture(event.pointerId);
+                }
+                themeDragState = null;
+            };
+
+            themeList.addEventListener('pointerup', finishThemeDrag);
+            themeList.addEventListener('pointercancel', finishThemeDrag);
+            themeList.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                if (isThemeSelectionTransitioning) return;
+
+                const direction = event.deltaY > 0 ? 1 : -1;
+                if (direction === 0) return;
+
+                const nextIndex = Math.max(
+                    0,
+                    Math.min(BACKGROUND_THEMES.length - 1, themePanelActiveIndex + direction)
+                );
+
+                if (nextIndex !== themePanelActiveIndex) {
+                    themePanelActiveIndex = nextIndex;
+                    hoveredThemeIndex = null;
+                    updateThemePanelSelection();
+                }
+            }, { passive: false });
+
             BACKGROUND_THEMES.forEach((theme, index) => {
                 const item = document.createElement('li');
+                item.className = 'theme-list-slot';
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'theme-list-item';
                 button.dataset.themeIndex = String(index);
                 button.textContent = theme.label;
-                button.addEventListener('mouseenter', () => {
-                    hoveredThemeIndex = index;
-                    updateThemePanelSelection();
-                });
-                button.addEventListener('mouseleave', () => {
-                    hoveredThemeIndex = null;
-                    updateThemePanelSelection();
-                });
                 button.addEventListener('focus', () => {
-                    hoveredThemeIndex = index;
-                    updateThemePanelSelection();
+                    setThemePanelActiveIndex(index);
                 });
                 button.addEventListener('blur', () => {
                     hoveredThemeIndex = null;
                     updateThemePanelSelection();
                 });
-                button.addEventListener('click', () => {
-                    startThemeSelectionTransition(index);
-                });
                 item.appendChild(button);
                 themeList.appendChild(item);
             });
+
+            themePanelActiveIndex = currentBackgroundIndex;
+            updateThemePanelSelection();
         }
 
         function applyBackgroundTheme(index) {
@@ -1160,6 +1293,12 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 
             scene.background = new THREE.Color(theme.color);
             renderer.toneMappingExposure = theme.exposure;
+
+            if (theme.id === 'deep-blue' && currentSound !== 'piano') {
+                soundSelect.value = 'piano';
+                void createInstrument('piano');
+            }
+
             updateThemePanelSelection();
 
             if (backgroundVisualsReady) {

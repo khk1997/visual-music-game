@@ -827,7 +827,7 @@
 
         #playback-screen.theme-selecting #theme-panel {
             display: grid;
-            top: clamp(255px, 33vh, 360px);
+            top: clamp(195px, 26vh, 290px);
             left: 50%;
             width: min(1380px, calc(100vw - 80px));
             min-height: 0;
@@ -842,7 +842,23 @@
         }
 
         #playback-screen.theme-selecting .theme-list {
-            gap: 12px;
+            position: relative;
+            height: 452px;
+            overflow: hidden;
+            perspective: 1200px;
+            perspective-origin: 50% 50%;
+            user-select: none;
+        }
+
+        #playback-screen.theme-selecting .theme-list > li {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            transform: translateY(-50%);
         }
 
         #playback-screen.theme-selecting .theme-list-item {
@@ -873,11 +889,16 @@
                 inset 0 1px 0 rgba(255,255,255,0.06),
                 0 14px 26px rgba(0,0,0,0.22);
             transition:
-                transform 0.26s ease,
+                transform 0.32s cubic-bezier(0.2, 0.75, 0.2, 1),
+                opacity 0.3s ease,
                 border-color 0.26s ease,
                 box-shadow 0.26s ease,
                 background 0.26s ease,
-                filter 0.26s ease;
+                filter 0.3s ease;
+            transform-origin: center center;
+            will-change: transform, opacity, filter;
+            cursor: grab;
+            touch-action: none;
         }
 
         #playback-screen.theme-selecting .theme-list-item::before {
@@ -909,7 +930,6 @@
 
         #playback-screen.theme-selecting #theme-panel:not(.is-transitioning) .theme-list-item:hover,
         #playback-screen.theme-selecting #theme-panel:not(.is-transitioning) .theme-list-item:focus-visible {
-            transform: translateY(-5px);
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)) padding-box,
                 linear-gradient(180deg, #2f3338, #22262b 58%, #1b1f23 100%) padding-box,
@@ -937,23 +957,40 @@
         }
 
         #playback-screen.theme-selecting .theme-list-item.is-selected {
-            transform: translateY(-5px);
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)) padding-box,
+                linear-gradient(180deg, #2f3338, #22262b 58%, #1b1f23 100%) padding-box,
+                linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1)) border-box;
+            background-clip: padding-box, padding-box, border-box;
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.06),
+                0 14px 26px rgba(0,0,0,0.22);
+            filter: brightness(1.02);
+        }
+
+        #playback-screen.theme-selecting .theme-list-item.is-active {
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)) padding-box,
                 linear-gradient(180deg, #2f3338, #22262b 58%, #1b1f23 100%) padding-box,
                 linear-gradient(
                     135deg,
-                    rgba(255, 236, 120, 0.98) 0%,
-                    rgba(255, 196, 66, 0.98) 28%,
-                    rgba(255, 154, 95, 0.95) 62%,
+                    rgba(120, 245, 255, 0.98) 0%,
+                    rgba(64, 207, 255, 0.98) 20%,
+                    rgba(38, 118, 255, 0.99) 54%,
+                    rgba(76, 94, 255, 0.97) 76%,
                     rgba(255, 168, 229, 0.95) 100%
                 ) border-box;
             background-clip: padding-box, padding-box, border-box;
             box-shadow:
-                0 18px 34px rgba(0,0,0,0.3),
-                0 0 0 1px rgba(255, 220, 120, 0.28),
-                0 0 20px rgba(255, 194, 98, 0.2);
-            filter: brightness(1.04);
+                0 18px 34px rgba(0,0,0,0.28),
+                0 0 0 1px rgba(95, 219, 255, 0.22),
+                0 0 18px rgba(63, 143, 255, 0.22),
+                0 0 32px rgba(255, 154, 223, 0.12);
+            filter: brightness(1.03);
+        }
+
+        #playback-screen.theme-selecting .theme-list-item.is-faded {
+            pointer-events: none;
         }
 
         #playback-screen.theme-selecting .theme-list-item.is-selected::after {
@@ -990,19 +1027,12 @@
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)) padding-box,
                 linear-gradient(180deg, #2f3338, #22262b 58%, #1b1f23 100%) padding-box,
-                linear-gradient(
-                    135deg,
-                    rgba(255, 236, 120, 0.98) 0%,
-                    rgba(255, 196, 66, 0.98) 28%,
-                    rgba(255, 154, 95, 0.95) 62%,
-                    rgba(255, 168, 229, 0.95) 100%
-                ) border-box;
+                linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1)) border-box;
             background-clip: padding-box, padding-box, border-box;
             box-shadow:
-                0 18px 34px rgba(0,0,0,0.3),
-                0 0 0 1px rgba(255, 220, 120, 0.28),
-                0 0 20px rgba(255, 194, 98, 0.2);
-            filter: brightness(1.04);
+                inset 0 1px 0 rgba(255,255,255,0.06),
+                0 14px 26px rgba(0,0,0,0.22);
+            filter: brightness(1.02);
             animation: theme-list-enter-press 0.56s cubic-bezier(0.18, 0.82, 0.2, 1) forwards;
         }
 
