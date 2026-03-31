@@ -1662,15 +1662,37 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             return queuedLaunchY;
         }
 
-        function createDeepBlueBarMesh(color, width, height) {
+        function isBlackKeyMidi(midi) {
+            return [1, 3, 6, 8, 10].includes(midi % 12);
+        }
+
+        function createDeepBlueBarMesh(color, width, height, isBlackKey) {
             const group = new THREE.Group();
+            const renderBaseOrder = isBlackKey ? 6 : 3;
+            let shadowMesh = null;
+
+            if (isBlackKey) {
+                const shadowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x000000,
+                    transparent: true,
+                    opacity: 0.18,
+                    blending: THREE.NormalBlending,
+                    depthWrite: false,
+                    side: THREE.DoubleSide,
+                    toneMapped: false
+                });
+                shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(width * 1.68, height * 1.14), shadowMaterial);
+                shadowMesh.position.set(0, -height * 0.03, -0.001);
+                shadowMesh.renderOrder = renderBaseOrder;
+                group.add(shadowMesh);
+            }
 
             const auraMaterial = new THREE.MeshBasicMaterial({
                 map: deepBlueBarTexture,
                 color,
                 transparent: true,
                 opacity: 0.24,
-                blending: THREE.AdditiveBlending,
+                blending: THREE.NormalBlending,
                 depthWrite: false,
                 side: THREE.DoubleSide,
                 toneMapped: false
@@ -1680,7 +1702,7 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
                 color,
                 transparent: true,
                 opacity: 0.46,
-                blending: THREE.AdditiveBlending,
+                blending: THREE.NormalBlending,
                 depthWrite: false,
                 side: THREE.DoubleSide,
                 toneMapped: false
@@ -1689,7 +1711,7 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
                 color: color.clone().lerp(new THREE.Color(0xffffff), 0.08),
                 transparent: true,
                 opacity: 0.92,
-                blending: THREE.AdditiveBlending,
+                blending: THREE.NormalBlending,
                 depthWrite: false,
                 side: THREE.DoubleSide,
                 toneMapped: false
@@ -1699,14 +1721,14 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             const glowMesh = new THREE.Mesh(new THREE.PlaneGeometry(width * 1.28, height), glowMaterial);
             const coreMesh = new THREE.Mesh(new THREE.PlaneGeometry(width * 0.82, height), coreMaterial);
 
-            auraMesh.renderOrder = 1;
-            glowMesh.renderOrder = 2;
-            coreMesh.renderOrder = 3;
+            auraMesh.renderOrder = renderBaseOrder + 1;
+            glowMesh.renderOrder = renderBaseOrder + 2;
+            coreMesh.renderOrder = renderBaseOrder + 3;
 
             group.add(auraMesh);
             group.add(glowMesh);
             group.add(coreMesh);
-            group.userData = { auraMesh, glowMesh, coreMesh };
+            group.userData = { shadowMesh, auraMesh, glowMesh, coreMesh, isBlackKey };
             return group;
         }
 
@@ -1715,6 +1737,9 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             const visuals = bar.mesh.userData;
             if (!visuals) return;
 
+            if (visuals.shadowMesh) {
+                visuals.shadowMesh.material.opacity = baseOpacity * 0.18;
+            }
             visuals.auraMesh.material.opacity = baseOpacity * 0.26 * shimmer;
             visuals.glowMesh.material.opacity = baseOpacity * 0.78 * shimmer;
             visuals.coreMesh.material.opacity = Math.min(1, baseOpacity * 1.08);
@@ -1741,14 +1766,16 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             if (isSustained && liveDeepBlueBars.has(barKey)) return;
 
             const launchPoint = getMidiLaunchPosition(midi, DEEP_BLUE_BAR_PLANE_Z);
+            const blackKey = isBlackKeyMidi(midi);
             const barWidth = 0.18;
             const initialHeight = 0.03;
             const minFloatingHeight = 0.2 + ((midi % 12) / 12) * 0.1;
             const color = getEffectColor(midi);
             const queuedLaunchY = getQueuedLaunchY(midi, launchPoint.y, initialHeight);
-            const mesh = createDeepBlueBarMesh(color, barWidth, initialHeight);
+            const mesh = createDeepBlueBarMesh(color, barWidth, initialHeight, blackKey);
             mesh.position.set(launchPoint.x, queuedLaunchY + initialHeight * 0.5, DEEP_BLUE_BAR_PLANE_Z);
             deepBlueBarGroup.add(mesh);
+            spawnDeepBlueJet(launchPoint, midi, blackKey);
 
             const bar = {
                 key: barKey,
@@ -1768,7 +1795,8 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
                 growthSpeed: 0.018,
                 releaseGrowthSpeed: 0.045,
                 drift: 0,
-                glowBaseOpacity: 0.88
+                glowBaseOpacity: 0.88,
+                jetPulseTimer: 0.22 + Math.random() * 0.12
             };
 
             activeDeepBlueBars.push(bar);
@@ -1802,18 +1830,24 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
                     bar.glowBaseOpacity = 0.88;
                 }
 
-                let targetGlowBaseOpacity = 0.72 * bar.fade;
+                let targetGlowBaseOpacity = 0.88 * bar.fade;
                 if (bar.holding) {
                     bar.topY += bar.velocity;
                     bar.currentHeight = Math.max(bar.baseHeight, bar.topY - bar.entryY);
                     bar.mesh.scale.y = bar.currentHeight / bar.baseHeight;
                     bar.mesh.position.y = bar.entryY + bar.currentHeight * 0.5;
                     targetGlowBaseOpacity = 0.88;
+
+                    bar.jetPulseTimer -= 1 / 60;
+                    if (bar.jetPulseTimer <= 0) {
+                        spawnDeepBlueJet({ x: bar.mesh.position.x, y: bar.entryY }, bar.midi, isBlackKeyMidi(bar.midi), true);
+                        bar.jetPulseTimer = 0.3 + Math.random() * 0.18;
+                    }
                 } else if (bar.sprouting) {
                     bar.currentHeight = Math.min(bar.targetHeight, bar.currentHeight + bar.releaseGrowthSpeed);
                     bar.mesh.scale.y = bar.currentHeight / bar.baseHeight;
                     bar.mesh.position.y = bar.launchY + bar.currentHeight * 0.5;
-                    targetGlowBaseOpacity = 0.84;
+                    targetGlowBaseOpacity = 0.88;
 
                     if (bar.currentHeight >= bar.targetHeight - 0.0001) {
                         bar.sprouting = false;
@@ -1839,7 +1873,6 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 
         updateBgPoints();
         backgroundVisualsReady = true;
-        syncBackgroundVisualState();
 
 
         // =========================================================
@@ -1847,6 +1880,7 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
         // =========================================================
         const activeSparks = [];
         const activeMists = [];
+        const activeDeepBlueJets = [];
         let impactIdx = 0;
 
         function getEffectColor(midi) {
@@ -1880,6 +1914,16 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             activeMists.length = 0;
         }
 
+        function clearActiveDeepBlueJets() {
+            for (let i = activeDeepBlueJets.length - 1; i >= 0; i--) {
+                const jet = activeDeepBlueJets[i];
+                scene.remove(jet.points);
+                jet.geo.dispose();
+                jet.points.material.dispose();
+            }
+            activeDeepBlueJets.length = 0;
+        }
+
         function syncBackgroundVisualState() {
             const showLegacyEffects = usesLegacyGridEffects();
             const showDeepBlueBars = usesDeepBlueNoteLanes();
@@ -1900,8 +1944,11 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 
             if (!showDeepBlueBars) {
                 clearDeepBlueBars();
+                clearActiveDeepBlueJets();
             }
         }
+
+        syncBackgroundVisualState();
 
         function triggerInteraction(source, bgPoint, midi) {
             if (usesLegacyGridEffects()) {
@@ -1920,6 +1967,115 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 
         function triggerDeepBlueNoteOff(source, midi) {
             releaseDeepBlueNoteBar(source, midi);
+        }
+
+        function spawnDeepBlueJet(point, midi, isBlackKey, isHeldPulse = false) {
+            if (!usesDeepBlueNoteLanes()) return;
+
+            const count = isHeldPulse
+                ? (isBlackKey ? 10 : 8)
+                : (isBlackKey ? 18 : 16);
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(count * 3);
+            const vel = new Float32Array(count * 3);
+            const drift = new Float32Array(count * 3);
+            const sizes = new Float32Array(count);
+            const alphas = new Float32Array(count);
+            const colors = new Float32Array(count * 3);
+            const ages = new Float32Array(count);
+            const phases = new Float32Array(count);
+            const swirl = new Float32Array(count);
+
+            for (let i = 0; i < count; i++) {
+                const spread = (Math.random() - 0.5) * (isHeldPulse
+                    ? (isBlackKey ? 0.016 : 0.022)
+                    : (isBlackKey ? 0.022 : 0.03));
+                const lift = isHeldPulse
+                    ? 0.004 + Math.random() * 0.006
+                    : 0.006 + Math.random() * 0.009;
+                const color = getEffectColor(midi).lerp(new THREE.Color(0xffffff), 0.28 + Math.random() * 0.16);
+
+                pos[i * 3] = point.x + spread * 0.3;
+                pos[i * 3 + 1] = point.y - 0.008 + Math.random() * 0.012;
+                pos[i * 3 + 2] = DEEP_BLUE_BAR_PLANE_Z + 0.008 + (Math.random() - 0.5) * 0.006;
+
+                vel[i * 3] = spread * 0.16;
+                vel[i * 3 + 1] = lift;
+                vel[i * 3 + 2] = 0;
+
+                drift[i * 3] = (Math.random() - 0.5) * 0.0014;
+                drift[i * 3 + 1] = 0.00055 + Math.random() * 0.0008;
+                drift[i * 3 + 2] = (Math.random() - 0.5) * 0.00035;
+
+                sizes[i] = (isHeldPulse ? 0.82 : 1) * ((isBlackKey ? 14 : 13) + Math.random() * 6);
+                alphas[i] = isHeldPulse
+                    ? 0.055 + Math.random() * 0.04
+                    : 0.1 + Math.random() * 0.09;
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+                ages[i] = Math.random() * 0.18;
+                phases[i] = Math.random() * Math.PI * 2;
+                swirl[i] = 0.00045 + Math.random() * 0.00065;
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+            geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+            geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+
+            const points = new THREE.Points(
+                geo,
+                new THREE.ShaderMaterial({
+                    uniforms: { uTex: { value: mistTex } },
+                    vertexShader: `
+                        attribute float aSize;
+                        attribute float aAlpha;
+                        attribute vec3 aColor;
+                        varying float vAlpha;
+                        varying vec3 vColor;
+
+                        void main() {
+                            vAlpha = aAlpha;
+                            vColor = aColor;
+                            vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+                            gl_PointSize = aSize * (0.45 + aAlpha * 0.9) * (350.0 / -mvPos.z);
+                            gl_Position = projectionMatrix * mvPos;
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform sampler2D uTex;
+                        varying float vAlpha;
+                        varying vec3 vColor;
+
+                        void main() {
+                            vec4 tex = texture2D(uTex, gl_PointCoord);
+                            gl_FragColor = vec4(vColor * tex.rgb, tex.a * vAlpha);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                })
+            );
+
+            points.renderOrder = isBlackKey ? 11 : 8;
+            scene.add(points);
+
+            activeDeepBlueJets.push({
+                points,
+                geo,
+                pos,
+                vel,
+                drift,
+                alphas,
+                ages,
+                phases,
+                swirl,
+                isHeldPulse,
+                posAttr: geo.attributes.position,
+                alphaAttr: geo.attributes.aAlpha
+            });
         }
 
         function spawnSparks(point) {
@@ -2369,6 +2525,47 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
                     m.geo.dispose();
                     m.points.material.dispose();
                     activeMists.splice(i, 1);
+                }
+            }
+
+            for (let i = activeDeepBlueJets.length - 1; i >= 0; i--) {
+                const jet = activeDeepBlueJets[i];
+                let alive = 0;
+
+                for (let j = 0; j < jet.alphas.length; j++) {
+                    if (jet.alphas[j] > 0.006) {
+                        jet.ages[j] += 0.06;
+
+                        const swirlX = Math.sin(jet.ages[j] * 3.2 + jet.phases[j]) * jet.swirl[j];
+                        const swirlZ = Math.cos(jet.ages[j] * 2.4 + jet.phases[j] * 0.7) * jet.swirl[j] * 0.35;
+                        const pulse = jet.isHeldPulse
+                            ? 0.992 + Math.sin(jet.ages[j] * 1.15 + jet.phases[j]) * 0.012
+                            : 1;
+
+                        jet.vel[j * 3] += jet.drift[j * 3] + swirlX;
+                        jet.vel[j * 3 + 1] += jet.drift[j * 3 + 1];
+                        jet.vel[j * 3 + 2] += jet.drift[j * 3 + 2] + swirlZ;
+
+                        jet.pos[j * 3] += jet.vel[j * 3];
+                        jet.pos[j * 3 + 1] += jet.vel[j * 3 + 1];
+                        jet.pos[j * 3 + 2] += jet.vel[j * 3 + 2];
+
+                        jet.vel[j * 3] *= 0.84;
+                        jet.vel[j * 3 + 1] *= 0.94;
+                        jet.vel[j * 3 + 2] *= 0.84;
+                        jet.alphas[j] *= (jet.isHeldPulse ? 0.968 : 0.958) * pulse;
+                        alive++;
+                    }
+                }
+
+                jet.posAttr.needsUpdate = true;
+                jet.alphaAttr.needsUpdate = true;
+
+                if (alive === 0) {
+                    scene.remove(jet.points);
+                    jet.geo.dispose();
+                    jet.points.material.dispose();
+                    activeDeepBlueJets.splice(i, 1);
                 }
             }
 
