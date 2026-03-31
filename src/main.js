@@ -1974,7 +1974,7 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 
             const count = isHeldPulse
                 ? (isBlackKey ? 10 : 8)
-                : (isBlackKey ? 18 : 16);
+                : (isBlackKey ? 12 : 10);
             const geo = new THREE.BufferGeometry();
             const pos = new Float32Array(count * 3);
             const vel = new Float32Array(count * 3);
@@ -1989,11 +1989,16 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
             for (let i = 0; i < count; i++) {
                 const spread = (Math.random() - 0.5) * (isHeldPulse
                     ? (isBlackKey ? 0.016 : 0.022)
-                    : (isBlackKey ? 0.022 : 0.03));
+                    : (isBlackKey ? 0.014 : 0.019));
                 const lift = isHeldPulse
                     ? 0.004 + Math.random() * 0.006
-                    : 0.006 + Math.random() * 0.009;
-                const color = getEffectColor(midi).lerp(new THREE.Color(0xffffff), 0.28 + Math.random() * 0.16);
+                    : 0.0045 + Math.random() * 0.0065;
+                const color = getEffectColor(midi).lerp(
+                    new THREE.Color(0xffffff),
+                    isHeldPulse
+                        ? 0.12 + Math.random() * 0.08
+                        : 0.18 + Math.random() * 0.1
+                );
 
                 pos[i * 3] = point.x + spread * 0.3;
                 pos[i * 3 + 1] = point.y - 0.008 + Math.random() * 0.012;
@@ -2007,10 +2012,10 @@ import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
                 drift[i * 3 + 1] = 0.00055 + Math.random() * 0.0008;
                 drift[i * 3 + 2] = (Math.random() - 0.5) * 0.00035;
 
-                sizes[i] = (isHeldPulse ? 0.82 : 1) * ((isBlackKey ? 14 : 13) + Math.random() * 6);
+                sizes[i] = (isHeldPulse ? 0.9 : 0.72) * ((isBlackKey ? 14 : 13) + Math.random() * 6);
                 alphas[i] = isHeldPulse
-                    ? 0.055 + Math.random() * 0.04
-                    : 0.1 + Math.random() * 0.09;
+                    ? 0.054 + Math.random() * 0.036
+                    : 0.05 + Math.random() * 0.045;
                 colors[i * 3] = color.r;
                 colors[i * 3 + 1] = color.g;
                 colors[i * 3 + 2] = color.b;
