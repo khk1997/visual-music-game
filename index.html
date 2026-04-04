@@ -561,7 +561,7 @@
             opacity: 0;
             pointer-events: none;
             mix-blend-mode: screen;
-            z-index: 3;
+            z-index: 2;
         }
 
         .mode-card-footer {
@@ -654,7 +654,7 @@
         }
 
         .mode-panel.is-transitioning .mode-card.is-selected {
-            z-index: 3;
+            z-index: 2;
             border-color: rgba(255,255,255,0.22);
             box-shadow:
                 inset 0 1px 0 rgba(255,255,255,0.12),
@@ -788,22 +788,85 @@
             opacity: 1;
         }
 
-        #top-bar {
+        #rhythm-hud-stack {
             position: absolute;
             top: 24px;
             left: 24px;
+            right: 24px;
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            gap: 8px;
             z-index: 101;
+            pointer-events: none;
+        }
+
+        #top-bar {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
             pointer-events: auto;
         }
 
+        #top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+
+        #top-bar-rhythm-stats {
+            display: none;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            width: min(760px, calc(100vw - 360px));
+            min-width: 320px;
+            max-width: 840px;
+            flex: 1 1 auto;
+            align-items: stretch;
+            color: #f8fdff;
+        }
+
+        #playback-screen.rhythm-stats-active #top-bar-rhythm-stats {
+            display: grid;
+        }
+
+        #top-bar-rhythm-stats .rhythm-game-stat {
+            min-height: 54px;
+            padding: 10px 12px 9px;
+            border-radius: 14px;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
+                rgba(255,255,255,0.012);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.05),
+                0 8px 16px rgba(0,0,0,0.12);
+        }
+
+        #top-bar-rhythm-stats .rhythm-game-stat-label {
+            font-size: 9px;
+            letter-spacing: 0.14em;
+            color: rgba(255,255,255,0.82);
+        }
+
+        #top-bar-rhythm-stats .rhythm-game-stat-value {
+            margin-top: 5px;
+            font-size: clamp(14px, 1.1vw, 18px);
+            color: #ffffff;
+        }
+
+        #top-bar-rhythm-stats .rhythm-game-stat-note {
+            margin-top: 4px;
+            font-size: 10px;
+            line-height: 1.3;
+            color: rgba(255,255,255,0.72);
+        }
+
         .rhythm-progress-hud {
-            position: absolute;
-            top: 76px;
-            left: 24px;
-            right: 24px;
+            position: relative;
             z-index: 101;
             pointer-events: none;
             opacity: 0;
@@ -839,6 +902,19 @@
         }
 
         @media (max-width: 720px) {
+            #rhythm-hud-stack {
+                top: 12px;
+                left: 12px;
+                right: 12px;
+                gap: 6px;
+            }
+
+            #top-bar-rhythm-stats {
+                width: 100%;
+                min-width: 0;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
             .rhythm-progress-label-row {
                 font-size: 11px;
             }
@@ -854,36 +930,26 @@
             border-radius: 999px;
             overflow: hidden;
             background:
-                linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+                linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)),
                 rgba(8, 12, 18, 0.62);
-            border: 1px solid rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.07);
             box-shadow:
-                inset 0 1px 0 rgba(255,255,255,0.08),
-                0 0 0 1px rgba(0, 0, 0, 0.14),
+                inset 0 1px 0 rgba(255,255,255,0.02),
+                0 0 0 1px rgba(0, 0, 0, 0.12),
                 0 0 18px rgba(94, 205, 255, 0.16),
                 0 0 34px rgba(255, 214, 108, 0.12);
-        }
-
-        .rhythm-progress-track::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background:
-                linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 18%, rgba(255,255,255,0) 82%, rgba(255,255,255,0.12));
-            opacity: 0.35;
-            pointer-events: none;
         }
 
         .rhythm-progress-track::after {
             content: '';
             position: absolute;
-            inset: -18px -10px -18px;
+            inset: -22px -12px -20px;
             border-radius: inherit;
             background:
-                radial-gradient(closest-side, rgba(109, 232, 255, 0.22), transparent 68%),
-                radial-gradient(closest-side at 70% 50%, rgba(255, 217, 109, 0.22), transparent 70%);
-            filter: blur(16px);
-            opacity: 0.9;
+                radial-gradient(closest-side, rgba(109, 232, 255, 0.18), transparent 72%),
+                radial-gradient(closest-side at 70% 50%, rgba(255, 217, 109, 0.18), transparent 74%);
+            filter: blur(22px);
+            opacity: 0.62;
             pointer-events: none;
             mix-blend-mode: screen;
             animation: rhythm-progress-halo 2.8s ease-in-out infinite alternate;
@@ -909,25 +975,25 @@
         .rhythm-progress-fill::after {
             content: '';
             position: absolute;
-            top: -120%;
-            bottom: -120%;
-            right: -34px;
-            width: 68px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-            filter: blur(4px);
+            top: -70%;
+            bottom: -70%;
+            right: -22px;
+            width: 54px;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.42), rgba(255,255,255,0.16) 36%, transparent 72%);
+            filter: blur(10px);
             animation: rhythm-progress-sheen 2.2s linear infinite;
-            opacity: 0.72;
+            opacity: 0.35;
         }
 
         .rhythm-progress-glow {
             position: absolute;
-            inset: -14px;
+            inset: -22px -12px -18px;
             border-radius: inherit;
             background:
-                radial-gradient(circle at 12% 50%, rgba(104, 229, 255, 0.42), transparent 34%),
-                radial-gradient(circle at 82% 50%, rgba(255, 214, 108, 0.36), transparent 36%);
-            filter: blur(18px);
-            opacity: 0.88;
+                radial-gradient(circle at 12% 52%, rgba(104, 229, 255, 0.26), transparent 42%),
+                radial-gradient(circle at 82% 52%, rgba(255, 214, 108, 0.22), transparent 44%);
+            filter: blur(24px);
+            opacity: 0.72;
             mix-blend-mode: screen;
             pointer-events: none;
             animation: rhythm-progress-aura 2.8s ease-in-out infinite alternate;
@@ -1258,7 +1324,7 @@
         }
 
         #theme-panel.is-transitioning .theme-list-item.is-selected {
-            z-index: 3;
+            z-index: 2;
             transform: translateY(-5px) scale(1);
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015)) padding-box,
@@ -1421,7 +1487,7 @@
 
         #bottom-ui {
             position: absolute;
-            bottom: 24px;
+            bottom: 8px;
             left: 50%;
             transform: translateX(-50%);
             width: 86%;
@@ -1466,7 +1532,7 @@
             font-size: 15px;
             font-weight: 700;
             color: #00d2ff;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             line-height: 1.05;
         }
 
@@ -1474,12 +1540,12 @@
             font-size: 8px;
             line-height: 1.15;
             color: rgba(255,255,255,0.68);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .single-row {
             display: flex;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .control-row {
@@ -1650,45 +1716,64 @@
             display: flex;
         }
 
-        .rhythm-game-panel {
-            position: relative;
-            display: flex;
+        #rhythm-game-ui {
             flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
             gap: 18px;
-            width: min(980px, 100%);
-            padding: 28px;
-            border-radius: 34px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: linear-gradient(180deg, #20252c, #15191f);
-            box-shadow: 0 24px 60px rgba(0,0,0,0.34);
-            color: #f4fbff;
-            backdrop-filter: none;
-            overflow: hidden;
+            padding: 118px 24px 18px;
+            box-sizing: border-box;
+            overflow: visible;
         }
 
-        .rhythm-game-panel::before {
-            content: none;
+        #rhythm-game-ui::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 50% 0%, rgba(112, 208, 255, 0.08), transparent 28%),
+                radial-gradient(circle at 50% 100%, rgba(255, 214, 108, 0.05), transparent 24%);
+            pointer-events: none;
+        }
+
+        .rhythm-game-stat-grid,
+        .rhythm-game-controls,
+        .rhythm-game-lanes,
+        #rg-legacy-ui {
+            position: relative;
+            z-index: 1;
+            width: min(100%, 900px);
         }
 
         .rhythm-game-stat-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-            width: 100%;
+            gap: 10px;
         }
 
         .rhythm-game-stat {
             position: relative;
-            min-height: 92px;
-            padding: 18px 18px 16px;
-            border-radius: 22px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.03);
+            min-height: 80px;
+            padding: 14px 14px 13px;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.07);
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02)),
+                rgba(255,255,255,0.012);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.05),
+                0 10px 22px rgba(0,0,0,0.12);
             overflow: hidden;
         }
 
         .rhythm-game-stat::before {
-            content: none;
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.08), transparent 42%);
+            opacity: 0.5;
+            pointer-events: none;
         }
 
         .rhythm-game-stat-label,
@@ -1701,33 +1786,29 @@
         }
 
         .rhythm-game-stat-value {
-            margin-top: 12px;
-            font-size: clamp(26px, 3.3vw, 34px);
+            margin-top: 8px;
+            font-size: clamp(18px, 1.7vw, 30px);
             font-weight: 700;
             line-height: 1;
+            letter-spacing: 0.01em;
         }
 
         .rhythm-game-stat-note {
-            margin-top: 10px;
+            margin-top: 8px;
             color: rgba(255,255,255,0.52);
-            font-size: 13px;
+            font-size: clamp(10px, 0.9vw, 12px);
             line-height: 1.5;
         }
 
         .rhythm-game-controls {
-            padding: 0;
-            border: 0;
-            background: transparent;
-            display: flex;
-            justify-content: center;
-            width: 100%;
+            display: none;
         }
 
         .rhythm-game-actions {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            justify-content: center;
+            justify-content: flex-start;
             width: 100%;
         }
 
@@ -1770,17 +1851,22 @@
             position: relative;
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 12px;
-            height: min(76vh, 820px);
-            min-height: 580px;
-            width: 100%;
+            gap: 10px;
+            width: min(100%, 900px);
+            height: min(80vh, 880px);
+            min-height: 640px;
+            padding: 16px 14px 14px;
+            border-radius: 28px;
+            border: none;
+            background: transparent;
+            box-shadow: none;
         }
 
         .rhythm-game-track-line {
             position: absolute;
             left: 0;
             right: 0;
-            bottom: 118px;
+            bottom: 134px;
             height: 2px;
             border-radius: 999px;
             background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255, 215, 108, 0.95), rgba(255,255,255,0.08));
@@ -1788,14 +1874,16 @@
                 0 0 0 1px rgba(255, 214, 98, 0.12),
                 0 0 16px rgba(255, 210, 82, 0.24);
             pointer-events: none;
-            z-index: 3;
+            z-index: 2;
         }
 
         .rhythm-game-lane {
             position: relative;
-            border-radius: 24px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.02);
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+                rgba(255,255,255,0.012);
             overflow: hidden;
         }
 
@@ -1822,7 +1910,7 @@
             position: absolute;
             left: 14%;
             right: 14%;
-            bottom: 108px;
+            bottom: 96px;
             height: 22px;
             border-radius: 999px;
             background:
@@ -1838,10 +1926,13 @@
             inset: 18px 18px 110px;
         }
 
+        #rg-legacy-ui {
+        }
+
         .rhythm-game-lane-keycap {
             position: absolute;
             left: 50%;
-            bottom: 24px;
+            bottom: 14px;
             transform: translateX(-50%);
             width: 60px;
             height: 60px;
@@ -1888,12 +1979,13 @@
         .rhythm-game-lane-label {
             position: absolute;
             left: 50%;
-            bottom: 93px;
+            bottom: 82px;
             transform: translateX(-50%);
             color: rgba(255,255,255,0.42);
             letter-spacing: 0.12em;
             font-size: 11px;
             text-transform: uppercase;
+            z-index: 4;
         }
 
         .rhythm-game-note {
@@ -1973,7 +2065,7 @@
         .rg-hit-burst {
             position: absolute;
             left: 50%;
-            bottom: 118px;
+            bottom: 134px;
             transform: translate(-50%, 50%);
             pointer-events: none;
             z-index: 6;
@@ -2073,6 +2165,24 @@
             display: grid;
         }
 
+        .rhythm-game-end-actions {
+            display: none;
+            width: min(100%, 900px);
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        #rhythm-game-ui.finished .rhythm-game-end-actions {
+            display: flex;
+        }
+
+        .rhythm-game-end-actions .rhythm-game-button {
+            min-width: 180px;
+            box-shadow:
+                0 10px 24px rgba(0,0,0,0.22),
+                0 0 24px rgba(112, 204, 255, 0.14);
+        }
+
         .rhythm-game-result-box {
             min-height: 104px;
             padding: 18px;
@@ -2094,7 +2204,7 @@
             line-height: 1.55;
         }
 
-        .rhythm-game-panel.playing .rhythm-game-track-line {
+        #rhythm-game-ui.playing .rhythm-game-track-line {
             animation: none;
         }
 
@@ -2120,8 +2230,8 @@
 
         @media (max-width: 980px) {
             .rhythm-game-lanes {
-                height: min(64vh, 640px);
-                min-height: 520px;
+                height: min(68vh, 700px);
+                min-height: 560px;
             }
 
             .rhythm-game-stat-grid,
@@ -2131,9 +2241,12 @@
         }
 
         @media (max-width: 720px) {
-            .rhythm-game-panel {
-                padding: 22px;
-                border-radius: 28px;
+            #rhythm-game-ui {
+                inset: 80px 12px 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 146px 0 16px;
             }
 
             .rhythm-game-stat-grid,
@@ -2142,31 +2255,48 @@
                 grid-template-columns: 1fr;
             }
 
+            .rhythm-game-stat-grid,
+            .rhythm-game-controls,
+            .rhythm-game-lanes,
+            #rg-legacy-ui {
+                width: min(100%, 1000px);
+            }
+
+            .rhythm-game-end-actions {
+                width: min(100%, 860px);
+            }
+
+            #rg-lanes {
+                order: -1;
+            }
+
             .rhythm-game-lanes {
                 gap: 8px;
-                min-height: 440px;
-                height: min(60vh, 540px);
+                min-height: 480px;
+                height: min(64vh, 600px);
+                padding: 12px 10px 10px;
+                width: min(100%, 860px);
             }
 
             .rhythm-game-lane-keycap {
                 width: 48px;
                 height: 48px;
-                bottom: 18px;
+                bottom: 10px;
                 border-radius: 14px;
                 font-size: 18px;
             }
 
             .rhythm-game-lane-label {
-                bottom: 76px;
+                bottom: 58px;
                 font-size: 10px;
             }
 
             .rhythm-game-track-line {
-                bottom: 92px;
+                bottom: 96px;
             }
 
             .rg-hit-burst {
-                bottom: 92px;
+                bottom: 96px;
             }
 
             .rhythm-game-lane-rail {
@@ -2941,8 +3071,8 @@
                 padding: 20px;
             }
 
-            .rhythm-game-panel {
-                padding: 22px;
+            #rhythm-game-ui {
+                padding: 14px 0 16px;
             }
 
             .absolute-pitch-panel::after {
@@ -3062,21 +3192,43 @@
                 <span class="floating-symbol switch symbol-x" style="top: 14%; left: 72%; --size: 58px; --drift-duration: 17s; --pulse-duration: 4.9s; --delay: -9s;">X</span>
                 <span class="floating-symbol switch symbol-y" style="bottom: 20%; left: 26%; --size: 60px; --drift-duration: 21s; --pulse-duration: 6.1s; --delay: -4s;">Y</span>
             </div>
-            <div id="top-bar">
-                <button id="back-home" class="top-bar-button" type="button">Back</button>
-                <button id="background-toggle" class="top-bar-button" type="button">Theme: PlayStation Style</button>
-                <button id="record-toggle" class="top-bar-button" type="button">Record</button>
-                <button id="playback-toggle" class="top-bar-button" type="button">Playback</button>
-                <div id="mode-status">Free Play</div>
-            </div>
-            <div class="rhythm-progress-hud" aria-hidden="true">
-                <div class="rhythm-progress-label-row">
-                    <span>Rhythm Progress</span>
-                    <span id="rhythm-progress-text">0%</span>
+            <div id="rhythm-hud-stack">
+                <div id="top-bar">
+                    <div id="top-bar-left">
+                        <button id="back-home" class="top-bar-button" type="button">Back</button>
+                        <button id="background-toggle" class="top-bar-button" type="button">Theme: PlayStation Style</button>
+                        <button id="record-toggle" class="top-bar-button" type="button">Record</button>
+                        <button id="playback-toggle" class="top-bar-button" type="button">Playback</button>
+                        <div id="mode-status">Free Play</div>
+                    </div>
+                    <div id="top-bar-rhythm-stats" class="rhythm-game-stat-grid" aria-hidden="true">
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Score</div>
+                            <div class="rhythm-game-stat-value" id="rg-score-value">0</div>
+                        </div>
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Combo</div>
+                            <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
+                        </div>
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Result</div>
+                            <div class="rhythm-game-stat-value" id="rg-result-grade">-</div>
+                        </div>
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Accuracy</div>
+                            <div class="rhythm-game-stat-value" id="rg-result-accuracy">0.0%</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="rhythm-progress-track">
-                    <div class="rhythm-progress-fill" id="rhythm-progress-fill"></div>
-                    <div class="rhythm-progress-glow"></div>
+                <div class="rhythm-progress-hud" aria-hidden="true">
+                    <div class="rhythm-progress-label-row">
+                        <span>Rhythm Progress</span>
+                        <span id="rhythm-progress-text">0%</span>
+                    </div>
+                    <div class="rhythm-progress-track">
+                        <div class="rhythm-progress-fill" id="rhythm-progress-fill"></div>
+                        <div class="rhythm-progress-glow"></div>
+                    </div>
                 </div>
             </div>
             <div id="theme-panel" aria-hidden="true">
@@ -3228,69 +3380,50 @@
             </div>
 
             <div id="rhythm-game-ui">
-                <div class="rhythm-game-panel">
-                    <div class="rhythm-game-stat-grid">
-                        <div class="rhythm-game-stat">
-                            <div class="rhythm-game-stat-label">Score</div>
-                            <div class="rhythm-game-stat-value" id="rg-score-value">0</div>
-                        </div>
-                        <div class="rhythm-game-stat">
-                            <div class="rhythm-game-stat-label">Combo</div>
-                            <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
-                        </div>
-                        <div class="rhythm-game-stat">
-                            <div class="rhythm-game-stat-label">Result</div>
-                            <div class="rhythm-game-stat-value" id="rg-result-grade">-</div>
-                            <div class="rhythm-game-stat-note" id="rg-result-summary">Results will appear after a run.</div>
-                        </div>
-                        <div class="rhythm-game-stat">
-                            <div class="rhythm-game-stat-label">Accuracy</div>
-                            <div class="rhythm-game-stat-value" id="rg-result-accuracy">0.0%</div>
-                            <div class="rhythm-game-stat-note">Based on Perfect / Good / Miss</div>
-                        </div>
+                <div class="rhythm-game-controls" aria-hidden="true">
+                    <div class="rhythm-game-actions">
+                        <button class="rhythm-game-button primary" id="rg-start-button" type="button">Start Run</button>
+                        <button class="rhythm-game-button" id="rg-restart-button" type="button">Restart Chart</button>
                     </div>
+                </div>
 
-                    <div class="rhythm-game-controls">
-                        <div class="rhythm-game-actions">
-                            <button class="rhythm-game-button primary" id="rg-start-button" type="button">Start Run</button>
-                            <button class="rhythm-game-button" id="rg-restart-button" type="button">Restart Chart</button>
-                        </div>
-                    </div>
+                <div id="rg-legacy-ui" hidden aria-hidden="true">
+                    <div id="rg-accuracy-value"></div>
+                    <div id="rg-progress-value"></div>
+                    <div id="rg-status-copy"></div>
+                    <div id="rg-judgement-value"></div>
+                    <div id="rg-judgement-detail"></div>
+                    <div id="rg-results"></div>
+                    <div id="rg-result-bias"></div>
+                    <div id="rg-result-combo"></div>
+                </div>
 
-                    <div id="rg-legacy-ui" hidden aria-hidden="true">
-                        <div id="rg-accuracy-value"></div>
-                        <div id="rg-progress-value"></div>
-                        <div id="rg-status-copy"></div>
-                        <div id="rg-judgement-value"></div>
-                        <div id="rg-judgement-detail"></div>
-                        <div id="rg-results"></div>
-                        <div id="rg-result-bias"></div>
-                        <div id="rg-result-combo"></div>
+                <div class="rhythm-game-lanes" id="rg-lanes">
+                    <div class="rhythm-game-track-line" aria-hidden="true"></div>
+                    <div class="rhythm-game-lane" data-lane="0">
+                        <div class="rhythm-game-lane-rail"></div>
+                        <div class="rhythm-game-lane-label">Lane 1</div>
+                        <div class="rhythm-game-lane-keycap">D</div>
                     </div>
+                    <div class="rhythm-game-lane" data-lane="1">
+                        <div class="rhythm-game-lane-rail"></div>
+                        <div class="rhythm-game-lane-label">Lane 2</div>
+                        <div class="rhythm-game-lane-keycap">F</div>
+                    </div>
+                    <div class="rhythm-game-lane" data-lane="2">
+                        <div class="rhythm-game-lane-rail"></div>
+                        <div class="rhythm-game-lane-label">Lane 3</div>
+                        <div class="rhythm-game-lane-keycap">J</div>
+                    </div>
+                    <div class="rhythm-game-lane" data-lane="3">
+                        <div class="rhythm-game-lane-rail"></div>
+                        <div class="rhythm-game-lane-label">Lane 4</div>
+                        <div class="rhythm-game-lane-keycap">K</div>
+                    </div>
+                </div>
 
-                    <div class="rhythm-game-lanes" id="rg-lanes">
-                        <div class="rhythm-game-track-line" aria-hidden="true"></div>
-                        <div class="rhythm-game-lane" data-lane="0">
-                            <div class="rhythm-game-lane-rail"></div>
-                            <div class="rhythm-game-lane-label">Lane 1</div>
-                            <div class="rhythm-game-lane-keycap">D</div>
-                        </div>
-                        <div class="rhythm-game-lane" data-lane="1">
-                            <div class="rhythm-game-lane-rail"></div>
-                            <div class="rhythm-game-lane-label">Lane 2</div>
-                            <div class="rhythm-game-lane-keycap">F</div>
-                        </div>
-                        <div class="rhythm-game-lane" data-lane="2">
-                            <div class="rhythm-game-lane-rail"></div>
-                            <div class="rhythm-game-lane-label">Lane 3</div>
-                            <div class="rhythm-game-lane-keycap">J</div>
-                        </div>
-                        <div class="rhythm-game-lane" data-lane="3">
-                            <div class="rhythm-game-lane-rail"></div>
-                            <div class="rhythm-game-lane-label">Lane 4</div>
-                            <div class="rhythm-game-lane-keycap">K</div>
-                        </div>
-                    </div>
+                <div class="rhythm-game-end-actions">
+                    <button class="rhythm-game-button primary" id="rg-retry-button" type="button">Retry</button>
                 </div>
             </div>
         </div>

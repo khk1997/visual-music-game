@@ -8,6 +8,9 @@ const JUDGE_WINDOWS = {
 };
 const TRAVEL_TIME = 1.8;
 const LEAD_IN = 1.6;
+const HOLD_VISUAL_GAP_PCT = 5;
+const NOTE_VISUAL_GAP_PCT = 4;
+const TAP_VISUAL_HEIGHT_PCT = 4;
 
 function createDemoChart() {
     const entries = [
@@ -90,9 +93,10 @@ export function createRhythmGameModule({
     playMidiWithInstrument,
     playVisualFeedback
 }) {
-    const panel = container.querySelector('.rhythm-game-panel');
+    const panel = container;
     const startButton = document.getElementById('rg-start-button');
     const restartButton = document.getElementById('rg-restart-button');
+    const retryButton = document.getElementById('rg-retry-button');
     const scoreValue = document.getElementById('rg-score-value');
     const comboValue = document.getElementById('rg-combo-value');
     const accuracyValue = document.getElementById('rg-result-accuracy');
@@ -120,6 +124,7 @@ export function createRhythmGameModule({
     let isRunning = false;
     let runStartAt = 0;
     let animationFrameId = null;
+    let autoStartTimerId = null;
     let laneFlashTimers = [];
     let notes = [];
     let score = 0;
@@ -161,7 +166,7 @@ export function createRhythmGameModule({
             el.dataset.noteId = String(note.id);
 
             if (note.type === 'hold') {
-                const holdPercent = Math.max(18, (note.duration / TRAVEL_TIME) * 100);
+                const holdPercent = Math.max(14, (note.duration / TRAVEL_TIME) * 100 - HOLD_VISUAL_GAP_PCT);
                 el.style.height = `${holdPercent}%`;
             }
 
@@ -319,6 +324,25 @@ export function createRhythmGameModule({
         clearLaneFlashes();
     }
 
+
+    function clearAutoStartTimer() {
+        if (autoStartTimerId !== null) {
+            window.clearTimeout(autoStartTimerId);
+            autoStartTimerId = null;
+        }
+    }
+
+    function scheduleAutoStart() {
+        clearAutoStartTimer();
+        autoStartTimerId = window.setTimeout(() => {
+            autoStartTimerId = null;
+            if (!isActive || isRunning) return;
+            startRun().catch((err) => {
+                console.error('Rhythm game auto-start failed:', err);
+                setJudgement('Audio Error', '音訊初始化失敗，請確認瀏覽器允許播放音效。');
+            });
+        }, 1200);
+    }
     function disposeInstrument() {
         disposeLofiChain(rhythmLofiVibrato, rhythmLofiFilter);
         if (rhythmInstrument && typeof rhythmInstrument.dispose === 'function') {
@@ -474,33 +498,50 @@ export function createRhythmGameModule({
         }
     }
 
+    function getVisualNoteHeightPercent(note, runTime) {
+        if (note.type === 'hold') {
+            if (note.state === 'holding') {
+                const remaining = Math.max(0, note.endTime - runTime);
+                return Math.max(14, (remaining / TRAVEL_TIME) * 100 - HOLD_VISUAL_GAP_PCT);
+            }
+
+            return Math.max(14, (note.duration / TRAVEL_TIME) * 100 - HOLD_VISUAL_GAP_PCT);
+        }
+
+        return TAP_VISUAL_HEIGHT_PCT;
+    }
+
     function updateNotePositions(runTime) {
+        const laneState = new Map();
+
         for (const note of notes) {
             if (!note.element) continue;
             if (note.state === 'hit' || note.state === 'miss') continue;
 
             const timeUntilHit = note.time - runTime;
             const progress = 1 - (timeUntilHit / TRAVEL_TIME);
-            const bottomPercent = (1 - progress) * 100;
+            const naturalBottomPercent = (1 - progress) * 100;
+            const noteHeightPercent = getVisualNoteHeightPercent(note, runTime);
             const holdExtra = note.type === 'hold' ? (note.duration / TRAVEL_TIME) * 100 : 0;
-            const visible = progress >= -0.08 && bottomPercent >= -(holdExtra + 18) && bottomPercent <= 118;
+            const laneBottomLimit = laneState.get(note.lane) ?? -10_000;
+            const visualBottomPercent = laneBottomLimit <= -9_000
+                ? naturalBottomPercent
+                : Math.max(naturalBottomPercent, laneBottomLimit);
+            const visible = progress >= -0.08 && visualBottomPercent >= -(holdExtra + 18) && visualBottomPercent <= 118;
 
             note.element.classList.toggle('is-visible', visible || note.state === 'holding');
 
             if (note.type === 'hold' && note.state === 'holding') {
-                // Mania-style hold: once the head is caught, keep it pinned to the judgement line and shrink the tail.
-                const remaining = Math.max(0, note.endTime - runTime);
-                const remainingPercent = (remaining / TRAVEL_TIME) * 100;
                 note.element.style.bottom = `0%`;
-                note.element.style.height = `${Math.max(0, remainingPercent)}%`;
+                note.element.style.height = `${noteHeightPercent}%`;
             } else {
-                note.element.style.bottom = `${bottomPercent}%`;
-                // Ensure the hold returns to its original height if it was previously shrunk.
+                note.element.style.bottom = `${visualBottomPercent}%`;
                 if (note.type === 'hold') {
-                    const fullPercent = Math.max(18, (note.duration / TRAVEL_TIME) * 100);
-                    note.element.style.height = `${fullPercent}%`;
+                    note.element.style.height = `${noteHeightPercent}%`;
                 }
             }
+
+            laneState.set(note.lane, visualBottomPercent + noteHeightPercent + NOTE_VISUAL_GAP_PCT);
         }
     }
 
@@ -535,7 +576,9 @@ export function createRhythmGameModule({
     }
 
     async function startRun() {
+        clearAutoStartTimer();
         await ensureAudioTools();
+        clearAutoStartTimer();
         resetNoteState();
         isRunning = true;
         panel.classList.add('playing');
@@ -553,7 +596,9 @@ export function createRhythmGameModule({
     }
 
     function resetRun() {
+        clearAutoStartTimer();
         isRunning = false;
+        clearAutoStartTimer();
         for (const timer of holdSprayTimers.values()) { clearInterval(timer); }
         holdSprayTimers.clear();
         activeHoldNotes.clear();
@@ -562,17 +607,26 @@ export function createRhythmGameModule({
     }
 
     function activate() {
+        if (!isRunning) {
+            scheduleAutoStart();
+        }
         isActive = true;
+        if (!isRunning) {
+            scheduleAutoStart();
+        }
         startLoop();
     }
 
     function deactivate() {
+        clearAutoStartTimer();
         isActive = false;
+        clearAutoStartTimer();
         isRunning = false;
         for (const timer of holdSprayTimers.values()) { clearInterval(timer); }
         holdSprayTimers.clear();
         activeHoldNotes.clear();
         panel.classList.remove('playing');
+        panel.classList.remove('finished');
         clearLaneFlashes();
         updateProgressBar(-LEAD_IN);
         stopLoop();
@@ -674,6 +728,7 @@ export function createRhythmGameModule({
     function finishRun() {
         isRunning = false;
         panel.classList.remove('playing');
+        panel.classList.add('finished');
         startButton.textContent = 'Start Again';
         // Defensive cleanup: ensure no hold glow/bar stays stuck after the run completes.
         for (const timer of holdSprayTimers.values()) {
@@ -735,6 +790,20 @@ export function createRhythmGameModule({
                 console.error('Rhythm game restart failed:', err);
             });
         });
+
+        if (retryButton) {
+            retryButton.addEventListener('click', () => {
+                if (!isRunning) {
+                    resetRun();
+                    scheduleAutoStart();
+                    return;
+                }
+
+                startRun().catch((err) => {
+                    console.error('Rhythm game restart failed:', err);
+                });
+            });
+        }
     }
 
     buildNotes();
@@ -750,8 +819,3 @@ export function createRhythmGameModule({
         reset: resetRun
     };
 }
-
-
-
-
-
