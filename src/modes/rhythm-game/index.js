@@ -95,8 +95,10 @@ export function createRhythmGameModule({
     const restartButton = document.getElementById('rg-restart-button');
     const scoreValue = document.getElementById('rg-score-value');
     const comboValue = document.getElementById('rg-combo-value');
-    const accuracyValue = document.getElementById('rg-accuracy-value');
+    const accuracyValue = document.getElementById('rg-result-accuracy');
     const progressValue = document.getElementById('rg-progress-value');
+    const progressFill = document.getElementById('rhythm-progress-fill');
+    const progressText = document.getElementById('rhythm-progress-text');
     const statusCopy = document.getElementById('rg-status-copy');
     const judgementValue = document.getElementById('rg-judgement-value');
     const judgementDetail = document.getElementById('rg-judgement-detail');
@@ -181,6 +183,17 @@ export function createRhythmGameModule({
             ? 100
             : Math.round((totalAccuracyWeight / judgedCount) * 100);
         accuracyValue.textContent = `${accuracy}%`;
+    }
+
+    function updateProgressBar(runTime) {
+        if (!progressFill || !progressText) return;
+
+        const totalRunDuration = LEAD_IN + chartDuration + 0.8;
+        const elapsed = Math.max(0, Math.min(runTime + LEAD_IN, totalRunDuration));
+        const percent = totalRunDuration <= 0 ? 0 : Math.max(0, Math.min(100, (elapsed / totalRunDuration) * 100));
+
+        progressFill.style.width = `${percent.toFixed(2)}%`;
+        progressText.textContent = `${Math.round(percent)}%`;
     }
 
     function resetStats() {
@@ -294,13 +307,14 @@ export function createRhythmGameModule({
     function resetNoteState() {
         buildNotes();
         resetStats();
+        updateProgressBar(-LEAD_IN);
         results.classList.remove('active');
         panel.classList.remove('playing');
         startButton.textContent = 'Start Run';
-        setJudgement('Ready', '等待第一輪開始。');
-        statusCopy.textContent = '按下 Start Run 後會先給一小段 lead-in，再開始落下第一批 note。';
+        setJudgement('Ready', '????????');
+        statusCopy.textContent = '?? Start Run ??????? lead-in????????? note?';
         if (sessionHint) {
-            sessionHint.textContent = '操作按鍵是 D F J K。這版除了短按，也加入了需要一路按住到尾端的 hold note。';
+            sessionHint.textContent = '????? D F J K?????????????????????? hold note?';
         }
         clearLaneFlashes();
     }
@@ -498,6 +512,7 @@ export function createRhythmGameModule({
 
         const runTime = currentRunTime();
         updateNotePositions(runTime);
+        updateProgressBar(runTime);
         if (runTime >= 0) {
             processAutoMisses(runTime);
         }
@@ -533,6 +548,7 @@ export function createRhythmGameModule({
             sessionHint.textContent = 'tap 是短按，hold 要從起點接住後一路按到尾端。這樣比較接近真正節奏遊戲的手感。';
         }
         updateHud();
+        updateProgressBar(-LEAD_IN);
         startLoop();
     }
 
@@ -542,6 +558,7 @@ export function createRhythmGameModule({
         holdSprayTimers.clear();
         activeHoldNotes.clear();
         resetNoteState();
+        updateProgressBar(-LEAD_IN);
     }
 
     function activate() {
@@ -557,6 +574,7 @@ export function createRhythmGameModule({
         activeHoldNotes.clear();
         panel.classList.remove('playing');
         clearLaneFlashes();
+        updateProgressBar(-LEAD_IN);
         stopLoop();
     }
 
@@ -664,6 +682,7 @@ export function createRhythmGameModule({
         holdSprayTimers.clear();
         activeHoldNotes.clear();
         clearLaneFlashes();
+        updateProgressBar(chartDuration + 0.8);
         window.setTimeout(() => {
             for (const rail of laneRailElements) {
                 if (!rail) continue;
@@ -731,6 +750,7 @@ export function createRhythmGameModule({
         reset: resetRun
     };
 }
+
 
 
 

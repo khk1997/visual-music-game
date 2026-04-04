@@ -729,6 +729,7 @@ import { createRhythmGameModule } from './modes/rhythm-game/index.js';
             modeScreen.classList.toggle('hidden', !isHome);
             playbackScreen.classList.toggle('active', isExperienceScreen);
             playbackScreen.classList.toggle('theme-selecting', isFreePlay && isFreePlayThemeSelection);
+            playbackScreen.classList.toggle('rhythm-progress-active', isRhythmGame);
             bottomUi.classList.toggle('hidden', !isFreePlay || isFreePlayThemeSelection);
             absolutePitchUi.classList.toggle('active', isAbsolutePitch);
             rhythmGameUi.classList.toggle('active', isRhythmGame);

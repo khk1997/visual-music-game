@@ -799,6 +799,180 @@
             pointer-events: auto;
         }
 
+        .rhythm-progress-hud {
+            position: absolute;
+            top: 76px;
+            left: 24px;
+            right: 24px;
+            z-index: 101;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+
+        #playback-screen.rhythm-progress-active .rhythm-progress-hud {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .rhythm-progress-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: rgba(255,255,255,0.66);
+            font-size: 12px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        #rhythm-progress-text {
+            font-size: 19px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #f8fdff;
+            text-shadow:
+                0 0 10px rgba(110, 223, 255, 0.38),
+                0 0 18px rgba(255, 214, 108, 0.22);
+        }
+
+        @media (max-width: 720px) {
+            .rhythm-progress-label-row {
+                font-size: 11px;
+            }
+
+            #rhythm-progress-text {
+                font-size: 16px;
+            }
+        }
+
+        .rhythm-progress-track {
+            position: relative;
+            height: 14px;
+            border-radius: 999px;
+            overflow: hidden;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+                rgba(8, 12, 18, 0.62);
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,0.08),
+                0 0 0 1px rgba(0, 0, 0, 0.14),
+                0 0 18px rgba(94, 205, 255, 0.16),
+                0 0 34px rgba(255, 214, 108, 0.12);
+        }
+
+        .rhythm-progress-track::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 18%, rgba(255,255,255,0) 82%, rgba(255,255,255,0.12));
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .rhythm-progress-track::after {
+            content: '';
+            position: absolute;
+            inset: -18px -10px -18px;
+            border-radius: inherit;
+            background:
+                radial-gradient(closest-side, rgba(109, 232, 255, 0.22), transparent 68%),
+                radial-gradient(closest-side at 70% 50%, rgba(255, 217, 109, 0.22), transparent 70%);
+            filter: blur(16px);
+            opacity: 0.9;
+            pointer-events: none;
+            mix-blend-mode: screen;
+            animation: rhythm-progress-halo 2.8s ease-in-out infinite alternate;
+        }
+
+        .rhythm-progress-fill {
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 0%;
+            border-radius: inherit;
+            background:
+                linear-gradient(90deg, rgba(102, 221, 255, 0.96), rgba(139, 247, 255, 0.98) 42%, rgba(255, 215, 111, 0.98));
+            box-shadow:
+                0 0 12px rgba(101, 208, 255, 0.5),
+                0 0 26px rgba(101, 208, 255, 0.34),
+                0 0 40px rgba(255, 214, 109, 0.28);
+            transform-origin: left center;
+            transition: width 0.08s linear;
+            filter: saturate(1.2) brightness(1.06);
+            animation: rhythm-progress-breathe 2.2s ease-in-out infinite alternate;
+        }
+
+        .rhythm-progress-fill::after {
+            content: '';
+            position: absolute;
+            top: -120%;
+            bottom: -120%;
+            right: -34px;
+            width: 68px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+            filter: blur(4px);
+            animation: rhythm-progress-sheen 2.2s linear infinite;
+            opacity: 0.72;
+        }
+
+        .rhythm-progress-glow {
+            position: absolute;
+            inset: -14px;
+            border-radius: inherit;
+            background:
+                radial-gradient(circle at 12% 50%, rgba(104, 229, 255, 0.42), transparent 34%),
+                radial-gradient(circle at 82% 50%, rgba(255, 214, 108, 0.36), transparent 36%);
+            filter: blur(18px);
+            opacity: 0.88;
+            mix-blend-mode: screen;
+            pointer-events: none;
+            animation: rhythm-progress-aura 2.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes rhythm-progress-sheen {
+            from {
+                transform: translateX(-120%);
+            }
+            to {
+                transform: translateX(280%);
+            }
+        }
+
+        @keyframes rhythm-progress-halo {
+            from {
+                transform: scale(0.98);
+                opacity: 0.65;
+            }
+            to {
+                transform: scale(1.03);
+                opacity: 1;
+            }
+        }
+
+        @keyframes rhythm-progress-aura {
+            from {
+                opacity: 0.68;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1.02);
+            }
+        }
+
+        @keyframes rhythm-progress-breathe {
+            from {
+                filter: saturate(1.12) brightness(1.02);
+            }
+            to {
+                filter: saturate(1.28) brightness(1.12);
+            }
+        }
+
         .top-bar-button {
             border: 1px solid rgba(255,255,255,0.16);
             background: rgba(10, 15, 25, 0.78);
@@ -1464,7 +1638,7 @@
 
         #rhythm-game-ui {
             position: absolute;
-            inset: 88px 24px 24px;
+            inset: 80px 20px 18px;
             display: none;
             align-items: center;
             justify-content: center;
@@ -1478,8 +1652,11 @@
 
         .rhythm-game-panel {
             position: relative;
-            width: min(1180px, 100%);
-            padding: 34px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            width: min(980px, 100%);
+            padding: 28px;
             border-radius: 34px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             background: linear-gradient(180deg, #20252c, #15191f);
@@ -1493,20 +1670,11 @@
             content: none;
         }
 
-        .rhythm-game-shell {
-            position: relative;
-            z-index: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            align-items: center;
-        }
-
         .rhythm-game-stat-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
-            width: min(100%, 980px);
+            width: 100%;
         }
 
         .rhythm-game-stat {
@@ -1552,8 +1720,7 @@
             background: transparent;
             display: flex;
             justify-content: center;
-            width: min(100%, 980px);
-            margin: 0 auto;
+            width: 100%;
         }
 
         .rhythm-game-actions {
@@ -1604,9 +1771,9 @@
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
-            height: min(60vh, 620px);
-            min-height: 420px;
-            width: min(100%, 980px);
+            height: min(76vh, 820px);
+            min-height: 580px;
+            width: 100%;
         }
 
         .rhythm-game-track-line {
@@ -1953,7 +2120,8 @@
 
         @media (max-width: 980px) {
             .rhythm-game-lanes {
-                height: min(54vh, 520px);
+                height: min(64vh, 640px);
+                min-height: 520px;
             }
 
             .rhythm-game-stat-grid,
@@ -1976,8 +2144,8 @@
 
             .rhythm-game-lanes {
                 gap: 8px;
-                min-height: 360px;
-                height: min(46vh, 420px);
+                min-height: 440px;
+                height: min(60vh, 540px);
             }
 
             .rhythm-game-lane-keycap {
@@ -2901,6 +3069,16 @@
                 <button id="playback-toggle" class="top-bar-button" type="button">Playback</button>
                 <div id="mode-status">Free Play</div>
             </div>
+            <div class="rhythm-progress-hud" aria-hidden="true">
+                <div class="rhythm-progress-label-row">
+                    <span>Rhythm Progress</span>
+                    <span id="rhythm-progress-text">0%</span>
+                </div>
+                <div class="rhythm-progress-track">
+                    <div class="rhythm-progress-fill" id="rhythm-progress-fill"></div>
+                    <div class="rhythm-progress-glow"></div>
+                </div>
+            </div>
             <div id="theme-panel" aria-hidden="true">
                 <ul class="theme-list" id="theme-list"></ul>
                 <div class="theme-preview">
@@ -3051,68 +3229,66 @@
 
             <div id="rhythm-game-ui">
                 <div class="rhythm-game-panel">
-                    <div class="rhythm-game-shell">
-                        <div class="rhythm-game-stat-grid">
-                            <div class="rhythm-game-stat">
-                                <div class="rhythm-game-stat-label">Score</div>
-                                <div class="rhythm-game-stat-value" id="rg-score-value">0</div>
-                            </div>
-                            <div class="rhythm-game-stat">
-                                <div class="rhythm-game-stat-label">Combo</div>
-                                <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
-                            </div>
-                            <div class="rhythm-game-stat">
-                                <div class="rhythm-game-stat-label">Result</div>
-                                <div class="rhythm-game-stat-value" id="rg-result-grade">-</div>
-                                <div class="rhythm-game-stat-note" id="rg-result-summary">Results will appear after a run.</div>
-                            </div>
-                            <div class="rhythm-game-stat">
-                                <div class="rhythm-game-stat-label">Accuracy</div>
-                                <div class="rhythm-game-stat-value" id="rg-result-accuracy">0.0%</div>
-                                <div class="rhythm-game-stat-note">Based on Perfect / Good / Miss</div>
-                            </div>
-                                                </div>
-
-                        <div class="rhythm-game-controls">
-                            <div class="rhythm-game-actions">
-                                <button class="rhythm-game-button primary" id="rg-start-button" type="button">Start Run</button>
-                                <button class="rhythm-game-button" id="rg-restart-button" type="button">Restart Chart</button>
-                            </div>
+                    <div class="rhythm-game-stat-grid">
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Score</div>
+                            <div class="rhythm-game-stat-value" id="rg-score-value">0</div>
                         </div>
-
-                        <div id="rg-legacy-ui" hidden aria-hidden="true">
-                            <div id="rg-accuracy-value"></div>
-                            <div id="rg-progress-value"></div>
-                            <div id="rg-status-copy"></div>
-                            <div id="rg-judgement-value"></div>
-                            <div id="rg-judgement-detail"></div>
-                            <div id="rg-results"></div>
-                            <div id="rg-result-bias"></div>
-                            <div id="rg-result-combo"></div>
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Combo</div>
+                            <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
                         </div>
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Result</div>
+                            <div class="rhythm-game-stat-value" id="rg-result-grade">-</div>
+                            <div class="rhythm-game-stat-note" id="rg-result-summary">Results will appear after a run.</div>
+                        </div>
+                        <div class="rhythm-game-stat">
+                            <div class="rhythm-game-stat-label">Accuracy</div>
+                            <div class="rhythm-game-stat-value" id="rg-result-accuracy">0.0%</div>
+                            <div class="rhythm-game-stat-note">Based on Perfect / Good / Miss</div>
+                        </div>
+                    </div>
 
-                        <div class="rhythm-game-lanes" id="rg-lanes">
-                            <div class="rhythm-game-track-line" aria-hidden="true"></div>
-                            <div class="rhythm-game-lane" data-lane="0">
-                                <div class="rhythm-game-lane-rail"></div>
-                                <div class="rhythm-game-lane-label">Lane 1</div>
-                                <div class="rhythm-game-lane-keycap">D</div>
-                            </div>
-                            <div class="rhythm-game-lane" data-lane="1">
-                                <div class="rhythm-game-lane-rail"></div>
-                                <div class="rhythm-game-lane-label">Lane 2</div>
-                                <div class="rhythm-game-lane-keycap">F</div>
-                            </div>
-                            <div class="rhythm-game-lane" data-lane="2">
-                                <div class="rhythm-game-lane-rail"></div>
-                                <div class="rhythm-game-lane-label">Lane 3</div>
-                                <div class="rhythm-game-lane-keycap">J</div>
-                            </div>
-                            <div class="rhythm-game-lane" data-lane="3">
-                                <div class="rhythm-game-lane-rail"></div>
-                                <div class="rhythm-game-lane-label">Lane 4</div>
-                                <div class="rhythm-game-lane-keycap">K</div>
-                            </div>
+                    <div class="rhythm-game-controls">
+                        <div class="rhythm-game-actions">
+                            <button class="rhythm-game-button primary" id="rg-start-button" type="button">Start Run</button>
+                            <button class="rhythm-game-button" id="rg-restart-button" type="button">Restart Chart</button>
+                        </div>
+                    </div>
+
+                    <div id="rg-legacy-ui" hidden aria-hidden="true">
+                        <div id="rg-accuracy-value"></div>
+                        <div id="rg-progress-value"></div>
+                        <div id="rg-status-copy"></div>
+                        <div id="rg-judgement-value"></div>
+                        <div id="rg-judgement-detail"></div>
+                        <div id="rg-results"></div>
+                        <div id="rg-result-bias"></div>
+                        <div id="rg-result-combo"></div>
+                    </div>
+
+                    <div class="rhythm-game-lanes" id="rg-lanes">
+                        <div class="rhythm-game-track-line" aria-hidden="true"></div>
+                        <div class="rhythm-game-lane" data-lane="0">
+                            <div class="rhythm-game-lane-rail"></div>
+                            <div class="rhythm-game-lane-label">Lane 1</div>
+                            <div class="rhythm-game-lane-keycap">D</div>
+                        </div>
+                        <div class="rhythm-game-lane" data-lane="1">
+                            <div class="rhythm-game-lane-rail"></div>
+                            <div class="rhythm-game-lane-label">Lane 2</div>
+                            <div class="rhythm-game-lane-keycap">F</div>
+                        </div>
+                        <div class="rhythm-game-lane" data-lane="2">
+                            <div class="rhythm-game-lane-rail"></div>
+                            <div class="rhythm-game-lane-label">Lane 3</div>
+                            <div class="rhythm-game-lane-keycap">J</div>
+                        </div>
+                        <div class="rhythm-game-lane" data-lane="3">
+                            <div class="rhythm-game-lane-rail"></div>
+                            <div class="rhythm-game-lane-label">Lane 4</div>
+                            <div class="rhythm-game-lane-keycap">K</div>
                         </div>
                     </div>
                 </div>
@@ -3131,6 +3307,7 @@
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>
+
 
 
 
