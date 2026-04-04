@@ -8,10 +8,6 @@ const JUDGE_WINDOWS = {
 };
 const TRAVEL_TIME = 1.8;
 const LEAD_IN = 1.6;
-const METRONOME_PITCH = {
-    accent: 'C6',
-    regular: 'G5'
-};
 
 function createDemoChart() {
     const entries = [
@@ -97,7 +93,6 @@ export function createRhythmGameModule({
     const panel = container.querySelector('.rhythm-game-panel');
     const startButton = document.getElementById('rg-start-button');
     const restartButton = document.getElementById('rg-restart-button');
-    const metronomeButton = document.getElementById('rg-metronome-button');
     const scoreValue = document.getElementById('rg-score-value');
     const comboValue = document.getElementById('rg-combo-value');
     const accuracyValue = document.getElementById('rg-accuracy-value');
@@ -114,19 +109,15 @@ export function createRhythmGameModule({
     const laneRailElements = laneElements.map((lane) => lane.querySelector('.rhythm-game-lane-rail'));
 
     const chart = createDemoChart();
-    const beatDuration = 60 / chart.bpm;
     const chartDuration = chart.notes.reduce((maxTime, note) => Math.max(maxTime, note.time + (note.duration ?? 0)), 0);
 
     let rhythmInstrument = null;
     let rhythmLofiVibrato = null;
     let rhythmLofiFilter = null;
-    let metronomeSynth = null;
     let isActive = false;
     let isRunning = false;
-    let metronomeEnabled = true;
     let runStartAt = 0;
     let animationFrameId = null;
-    let lastBeatIndex = -1;
     let laneFlashTimers = [];
     let notes = [];
     let score = 0;
@@ -308,7 +299,9 @@ export function createRhythmGameModule({
         startButton.textContent = 'Start Run';
         setJudgement('Ready', '等待第一輪開始。');
         statusCopy.textContent = '按下 Start Run 後會先給一小段 lead-in，再開始落下第一批 note。';
-        sessionHint.textContent = '操作按鍵是 D F J K。這版除了短按，也加入了需要一路按住到尾端的 hold note。';
+        if (sessionHint) {
+            sessionHint.textContent = '操作按鍵是 D F J K。這版除了短按，也加入了需要一路按住到尾端的 hold note。';
+        }
         clearLaneFlashes();
     }
 
@@ -331,19 +324,6 @@ export function createRhythmGameModule({
             rhythmLofiVibrato = created.lofiVibrato;
             rhythmLofiFilter = created.lofiFilter;
         }
-
-        if (!metronomeSynth) {
-            metronomeSynth = new Tone.Synth({
-                oscillator: { type: 'triangle' },
-                envelope: {
-                    attack: 0.001,
-                    decay: 0.07,
-                    sustain: 0,
-                    release: 0.08
-                }
-            }).toDestination();
-            metronomeSynth.volume.value = -12;
-        }
     }
 
     function currentRunTime() {
@@ -356,15 +336,6 @@ export function createRhythmGameModule({
         const visualX = LANE_VISUAL_X[laneIndex] ?? 0;
         playVisualFeedback('user', midi, visualX, -1.9);
         playMidiWithInstrument(rhythmInstrument, 'chiptune_lead', midi);
-    }
-
-    function playMetronomeBeat(beatIndex) {
-        if (!metronomeEnabled || !metronomeSynth) return;
-        const isAccent = beatIndex % 4 === 0;
-        metronomeSynth.triggerAttackRelease(
-            isAccent ? METRONOME_PITCH.accent : METRONOME_PITCH.regular,
-            0.06
-        );
     }
 
     function recordFinalResult(note, bucket, label, detail, scoreDelta, accuracyWeight, offsetSeconds = null) {
@@ -526,16 +497,6 @@ export function createRhythmGameModule({
         if (!isActive || !isRunning) return;
 
         const runTime = currentRunTime();
-        const beatClock = runTime + LEAD_IN;
-
-        if (beatClock >= 0) {
-            const beatIndex = Math.floor(beatClock / beatDuration);
-            if (beatIndex !== lastBeatIndex) {
-                lastBeatIndex = beatIndex;
-                playMetronomeBeat(beatIndex);
-            }
-        }
-
         updateNotePositions(runTime);
         if (runTime >= 0) {
             processAutoMisses(runTime);
@@ -566,17 +527,17 @@ export function createRhythmGameModule({
         results.classList.remove('active');
         startButton.textContent = 'Running...';
         runStartAt = nowSeconds() + LEAD_IN;
-        lastBeatIndex = -1;
         statusCopy.textContent = `${chart.title} 已載入。這輪除了 tap，也有幾顆 hold note 會混進來。`;
-        setJudgement('Lead In', '節拍器會先帶你進拍。');
-        sessionHint.textContent = 'tap 是短按，hold 要從起點接住後一路按到尾端。這樣比較接近真正節奏遊戲的手感。';
+        setJudgement('Lead In', '先熟悉落點與判定節奏。');
+        if (sessionHint) {
+            sessionHint.textContent = 'tap 是短按，hold 要從起點接住後一路按到尾端。這樣比較接近真正節奏遊戲的手感。';
+        }
         updateHud();
         startLoop();
     }
 
     function resetRun() {
         isRunning = false;
-        lastBeatIndex = -1;
         for (const timer of holdSprayTimers.values()) { clearInterval(timer); }
         holdSprayTimers.clear();
         activeHoldNotes.clear();
@@ -591,7 +552,6 @@ export function createRhythmGameModule({
     function deactivate() {
         isActive = false;
         isRunning = false;
-        lastBeatIndex = -1;
         for (const timer of holdSprayTimers.values()) { clearInterval(timer); }
         holdSprayTimers.clear();
         activeHoldNotes.clear();
@@ -756,16 +716,6 @@ export function createRhythmGameModule({
                 console.error('Rhythm game restart failed:', err);
             });
         });
-
-        metronomeButton.addEventListener('click', () => {
-            metronomeEnabled = !metronomeEnabled;
-            metronomeButton.textContent = metronomeEnabled ? 'Metronome On' : 'Metronome Off';
-            metronomeButton.classList.toggle('is-active', metronomeEnabled);
-            setJudgement(
-                metronomeEnabled ? 'Guide On' : 'Guide Off',
-                metronomeEnabled ? '節拍器已開啟，這輪更適合觀察 timing 偏差。' : '節拍器已關閉，現在可以專心測純視覺讀譜。'
-            );
-        });
     }
 
     buildNotes();
@@ -781,3 +731,7 @@ export function createRhythmGameModule({
         reset: resetRun
     };
 }
+
+
+
+

@@ -1481,112 +1481,32 @@
             width: min(1180px, 100%);
             padding: 34px;
             border-radius: 34px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background:
-                radial-gradient(circle at 14% 12%, rgba(255, 199, 91, 0.12), transparent 24%),
-                radial-gradient(circle at 84% 16%, rgba(80, 178, 255, 0.12), transparent 28%),
-                linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.012)),
-                linear-gradient(180deg, rgba(26, 32, 46, 0.96), rgba(9, 12, 20, 0.97));
-            box-shadow:
-                inset 0 1px 0 rgba(255,255,255,0.08),
-                0 30px 90px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: linear-gradient(180deg, #20252c, #15191f);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.34);
             color: #f4fbff;
-            backdrop-filter: blur(14px);
+            backdrop-filter: none;
             overflow: hidden;
         }
 
         .rhythm-game-panel::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background:
-                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px),
-                linear-gradient(180deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-            background-size: 68px 68px;
-            mask-image: linear-gradient(180deg, rgba(0,0,0,0.42), transparent 72%);
-            pointer-events: none;
-            opacity: 0.46;
+            content: none;
         }
 
         .rhythm-game-shell {
             position: relative;
             z-index: 1;
-            display: grid;
-            grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
-            gap: 28px;
-            align-items: stretch;
-        }
-
-        .rhythm-game-sidebar {
             display: flex;
             flex-direction: column;
-            gap: 18px;
-        }
-
-        .rhythm-game-eyebrow {
-            display: inline-flex;
+            gap: 16px;
             align-items: center;
-            gap: 10px;
-            width: fit-content;
-            padding: 8px 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.1);
-            background: rgba(255,255,255,0.04);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
-            font-size: 11px;
-            letter-spacing: 0.24em;
-            text-transform: uppercase;
-            color: rgba(255,255,255,0.58);
-        }
-
-        .rhythm-game-eyebrow::before {
-            content: '';
-            width: 22px;
-            height: 1px;
-            background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.56));
-        }
-
-        .rhythm-game-title {
-            margin: 6px 0 0;
-            font-size: clamp(32px, 4vw, 54px);
-            font-weight: 800;
-            line-height: 0.98;
-            letter-spacing: 0.01em;
-            text-wrap: balance;
-        }
-
-        .rhythm-game-copy {
-            margin: 0;
-            color: rgba(255,255,255,0.72);
-            line-height: 1.72;
-            font-size: 15px;
-        }
-
-        .rhythm-game-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .rhythm-game-meta-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 34px;
-            padding: 0 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.03);
-            color: rgba(255,255,255,0.62);
-            font-size: 11px;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
         }
 
         .rhythm-game-stat-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
+            width: min(100%, 980px);
         }
 
         .rhythm-game-stat {
@@ -1595,19 +1515,12 @@
             padding: 18px 18px 16px;
             border-radius: 22px;
             border: 1px solid rgba(255,255,255,0.08);
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015)),
-                rgba(5, 9, 15, 0.48);
+            background: rgba(255,255,255,0.03);
             overflow: hidden;
         }
 
         .rhythm-game-stat::before {
-            content: '';
-            position: absolute;
-            inset: 0 auto 0 0;
-            width: 3px;
-            background: linear-gradient(180deg, rgba(255, 213, 102, 0.92), rgba(84, 186, 255, 0.92));
-            opacity: 0.72;
+            content: none;
         }
 
         .rhythm-game-stat-label,
@@ -1634,17 +1547,21 @@
         }
 
         .rhythm-game-controls {
-            padding: 22px;
-            border-radius: 26px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.03);
+            padding: 0;
+            border: 0;
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            width: min(100%, 980px);
+            margin: 0 auto;
         }
 
         .rhythm-game-actions {
-            margin-top: 14px;
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
+            justify-content: center;
+            width: 100%;
         }
 
         .rhythm-game-button {
@@ -1653,92 +1570,32 @@
             padding: 0 18px;
             border-radius: 16px;
             border: 1px solid rgba(255,255,255,0.12);
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
-                rgba(255,255,255,0.02);
+            background: rgba(255,255,255,0.04);
             color: #f8fcff;
             cursor: pointer;
-            transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+            transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
         }
 
         .rhythm-game-button:hover {
             transform: translateY(-2px);
             border-color: rgba(255,255,255,0.22);
-            box-shadow: 0 12px 22px rgba(0,0,0,0.26);
+            background: rgba(255,255,255,0.08);
         }
 
         .rhythm-game-button.primary {
             border-color: rgba(255, 214, 108, 0.38);
-            background:
-                linear-gradient(180deg, rgba(255, 227, 143, 0.18), rgba(255, 170, 72, 0.06)),
-                rgba(255,255,255,0.02);
-            box-shadow: 0 0 0 1px rgba(255, 212, 98, 0.12);
+            background: rgba(255, 214, 108, 0.16);
         }
 
         .rhythm-game-button.is-active {
             border-color: rgba(112, 204, 255, 0.42);
-            background:
-                linear-gradient(180deg, rgba(100, 192, 255, 0.2), rgba(50, 92, 255, 0.08)),
-                rgba(255,255,255,0.02);
+            background: rgba(112, 204, 255, 0.16);
         }
 
         .rhythm-game-hint {
             margin-top: 14px;
             color: rgba(255,255,255,0.56);
             line-height: 1.65;
-            font-size: 13px;
-        }
-
-        .rhythm-game-preview {
-            display: grid;
-            gap: 18px;
-            min-height: 0;
-            padding: 22px;
-            border-radius: 30px;
-            border: 1px solid rgba(255,255,255,0.08);
-            background:
-                radial-gradient(circle at 50% 0%, rgba(83, 185, 255, 0.08), transparent 32%),
-                linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012)),
-                rgba(5, 7, 13, 0.62);
-        }
-
-        .rhythm-game-preview-header {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-            align-items: start;
-        }
-
-        .rhythm-game-preview-title {
-            margin: 10px 0 0;
-            font-size: 26px;
-            font-weight: 700;
-        }
-
-        .rhythm-game-preview-copy {
-            margin: 10px 0 0;
-            color: rgba(255,255,255,0.68);
-            line-height: 1.7;
-            font-size: 14px;
-        }
-
-        .rhythm-game-judgement {
-            min-width: 120px;
-            text-align: right;
-        }
-
-        .rhythm-game-judgement-value {
-            font-size: 18px;
-            font-weight: 700;
-            line-height: 1;
-            color: #ffe18d;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        .rhythm-game-judgement-detail {
-            margin-top: 10px;
-            color: rgba(255,255,255,0.5);
             font-size: 13px;
         }
 
@@ -1749,6 +1606,7 @@
             gap: 12px;
             height: min(60vh, 620px);
             min-height: 420px;
+            width: min(100%, 980px);
         }
 
         .rhythm-game-track-line {
@@ -1770,19 +1628,12 @@
             position: relative;
             border-radius: 24px;
             border: 1px solid rgba(255,255,255,0.08);
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
-                rgba(255,255,255,0.015);
+            background: rgba(255,255,255,0.02);
             overflow: hidden;
         }
 
         .rhythm-game-lane::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 28%);
-            opacity: 0.28;
-            pointer-events: none;
+            content: none;
         }
 
         .rhythm-game-lane.is-hit {
@@ -2009,31 +1860,19 @@
 
         .rhythm-game-note.is-miss {
             opacity: 1;
-            background:
-                linear-gradient(90deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02)),
-                linear-gradient(90deg, rgba(255, 113, 113, 0.96), rgba(255, 62, 62, 0.88));
-            box-shadow:
-                0 0 0 1px rgba(255, 146, 146, 0.16),
-                0 0 20px rgba(255, 82, 82, 0.22);
+            background: linear-gradient(90deg, rgba(255, 113, 113, 0.96), rgba(255, 62, 62, 0.88));
+            box-shadow: none;
             animation: rhythm-note-miss-fade 0.62s ease-out forwards;
         }
 
         .rhythm-game-note.hold.is-miss {
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.01)),
-                linear-gradient(180deg, rgba(255, 122, 122, 0.92), rgba(210, 44, 44, 0.92));
-            box-shadow:
-                inset 0 0 0 1px rgba(255, 194, 194, 0.08),
-                0 0 28px rgba(255, 88, 88, 0.22);
+            background: linear-gradient(180deg, rgba(255, 122, 122, 0.92), rgba(210, 44, 44, 0.92));
+            box-shadow: none;
         }
 
         .rhythm-game-note.hold.is-miss::before {
-            background:
-                linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
-                linear-gradient(90deg, rgba(255, 152, 152, 0.96), rgba(255, 76, 76, 0.94));
-            box-shadow:
-                0 0 0 1px rgba(255,255,255,0.06),
-                0 0 18px rgba(255, 72, 72, 0.2);
+            background: linear-gradient(90deg, rgba(255, 152, 152, 0.96), rgba(255, 76, 76, 0.94));
+            box-shadow: none;
         }
 
         .rhythm-game-footer {
@@ -2072,9 +1911,7 @@
             padding: 18px;
             border-radius: 22px;
             border: 1px solid rgba(255,255,255,0.08);
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.012)),
-                rgba(255,255,255,0.02);
+            background: rgba(255,255,255,0.02);
         }
 
         .rhythm-game-result-value {
@@ -2091,67 +1928,7 @@
         }
 
         .rhythm-game-panel.playing .rhythm-game-track-line {
-            animation: rhythm-line-pulse 0.9s ease-in-out infinite;
-        }
-
-        @keyframes rhythm-line-pulse {
-            0%, 100% {
-                box-shadow:
-                    0 0 0 1px rgba(255, 214, 98, 0.12),
-                    0 0 16px rgba(255, 210, 82, 0.24);
-            }
-            50% {
-                box-shadow:
-                    0 0 0 1px rgba(255, 214, 98, 0.22),
-                    0 0 26px rgba(255, 210, 82, 0.38);
-            }
-        }
-
-        @keyframes rhythm-hold-anchor-pulse {
-            0%, 100% {
-                transform: scale(0.92);
-                opacity: 0.56;
-            }
-            50% {
-                transform: scale(1.12);
-                opacity: 1;
-            }
-        }
-
-        @keyframes rhythm-hold-keycap-pulse {
-            0%, 100% {
-                transform: translateX(-50%) scale(1.02);
-                box-shadow:
-                    inset 0 1px 0 rgba(255,255,255,0.24),
-                    0 0 0 1px rgba(255, 222, 128, 0.24),
-                    0 0 18px rgba(255, 208, 102, 0.2);
-            }
-            50% {
-                transform: translateX(-50%) scale(1.1);
-                box-shadow:
-                    inset 0 1px 0 rgba(255,255,255,0.3),
-                    0 0 0 1px rgba(255, 230, 156, 0.32),
-                    0 0 30px rgba(255, 213, 103, 0.34),
-                    0 0 44px rgba(88, 187, 255, 0.18);
-            }
-        }
-
-        @keyframes rhythm-hold-body-pulse {
-            0%, 100% {
-                filter: saturate(1.04) brightness(1);
-            }
-            50% {
-                filter: saturate(1.16) brightness(1.08);
-            }
-        }
-
-        @keyframes rhythm-hold-scan {
-            0% {
-                transform: translateY(-120%);
-            }
-            100% {
-                transform: translateY(120%);
-            }
+            animation: none;
         }
 
         @keyframes rhythm-note-miss-fade {
@@ -2175,15 +1952,11 @@
         }
 
         @media (max-width: 980px) {
-            .rhythm-game-shell {
-                grid-template-columns: 1fr;
-            }
-
             .rhythm-game-lanes {
                 height: min(54vh, 520px);
             }
 
-            .rhythm-game-footer,
+            .rhythm-game-stat-grid,
             .rhythm-game-results {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -3279,120 +3052,66 @@
             <div id="rhythm-game-ui">
                 <div class="rhythm-game-panel">
                     <div class="rhythm-game-shell">
-                        <div class="rhythm-game-sidebar">
-                            <div class="rhythm-game-eyebrow">Rhythm Prototype</div>
-                            <h2 class="rhythm-game-title">先把手感打準，再決定要長成哪種音遊。</h2>
-                            <p class="rhythm-game-copy">這一版先不依賴歌曲，改用固定 BPM 節拍器和練習譜面。你可以先檢查四軌下落、判定窗、combo 與節奏壓力，再決定後續要接真歌、鼓點還是更偏音感訓練的玩法。</p>
-
-                            <div class="rhythm-game-meta" aria-hidden="true">
-                                <span class="rhythm-game-meta-chip">4 Lanes</span>
-                                <span class="rhythm-game-meta-chip">Metronome</span>
-                                <span class="rhythm-game-meta-chip">Practice Chart</span>
+                        <div class="rhythm-game-stat-grid">
+                            <div class="rhythm-game-stat">
+                                <div class="rhythm-game-stat-label">Score</div>
+                                <div class="rhythm-game-stat-value" id="rg-score-value">0</div>
                             </div>
-
-                            <div class="rhythm-game-stat-grid">
-                                <div class="rhythm-game-stat">
-                                    <div class="rhythm-game-stat-label">Score</div>
-                                    <div class="rhythm-game-stat-value" id="rg-score-value">0</div>
-                                    <div class="rhythm-game-stat-note">每次判定都會直接累積分數。</div>
-                                </div>
-                                <div class="rhythm-game-stat">
-                                    <div class="rhythm-game-stat-label">Combo</div>
-                                    <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
-                                    <div class="rhythm-game-stat-note">連續命中越多，越容易感受到判定是否偏鬆或偏嚴。</div>
-                                </div>
-                                <div class="rhythm-game-stat">
-                                    <div class="rhythm-game-stat-label">Accuracy</div>
-                                    <div class="rhythm-game-stat-value" id="rg-accuracy-value">100%</div>
-                                    <div class="rhythm-game-stat-note">依 `Perfect` / `Good` / `Miss` 估算整體穩定度。</div>
-                                </div>
-                                <div class="rhythm-game-stat">
-                                    <div class="rhythm-game-stat-label">Progress</div>
-                                    <div class="rhythm-game-stat-value" id="rg-progress-value">0 / 0</div>
-                                    <div class="rhythm-game-stat-note">先跑一首短譜，方便快速反覆微調。</div>
-                                </div>
+                            <div class="rhythm-game-stat">
+                                <div class="rhythm-game-stat-label">Combo</div>
+                                <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
                             </div>
+                            <div class="rhythm-game-stat">
+                                <div class="rhythm-game-stat-label">Result</div>
+                                <div class="rhythm-game-stat-value" id="rg-result-grade">-</div>
+                                <div class="rhythm-game-stat-note" id="rg-result-summary">Results will appear after a run.</div>
+                            </div>
+                            <div class="rhythm-game-stat">
+                                <div class="rhythm-game-stat-label">Accuracy</div>
+                                <div class="rhythm-game-stat-value" id="rg-result-accuracy">0.0%</div>
+                                <div class="rhythm-game-stat-note">Based on Perfect / Good / Miss</div>
+                            </div>
+                                                </div>
 
-                            <div class="rhythm-game-controls">
-                                <div class="rhythm-game-controls-label">Session Controls</div>
-                                <div class="rhythm-game-actions">
-                                    <button class="rhythm-game-button primary" id="rg-start-button" type="button">Start Run</button>
-                                    <button class="rhythm-game-button" id="rg-restart-button" type="button">Restart Chart</button>
-                                    <button class="rhythm-game-button is-active" id="rg-metronome-button" type="button">Metronome On</button>
-                                </div>
-                                <div class="rhythm-game-hint" id="rg-session-hint">操作按鍵是 `D F J K`。先聽到節拍器後再進拍，觀察自己是常常早打、晚打，還是 miss 在換手時。</div>
+                        <div class="rhythm-game-controls">
+                            <div class="rhythm-game-actions">
+                                <button class="rhythm-game-button primary" id="rg-start-button" type="button">Start Run</button>
+                                <button class="rhythm-game-button" id="rg-restart-button" type="button">Restart Chart</button>
                             </div>
                         </div>
 
-                        <div class="rhythm-game-preview">
-                            <div class="rhythm-game-preview-header">
-                                <div>
-                                    <div class="rhythm-game-preview-label">Live Run</div>
-                                    <div class="rhythm-game-preview-title">Prototype Session</div>
-                                    <p class="rhythm-game-preview-copy" id="rg-status-copy">按下 Start Run 後會先給一小段 lead-in，再開始落下第一批 note。</p>
-                                </div>
-                                <div class="rhythm-game-judgement" aria-live="polite">
-                                    <div class="rhythm-game-preview-label">Last Judge</div>
-                                    <div class="rhythm-game-judgement-value" id="rg-judgement-value">Ready</div>
-                                    <div class="rhythm-game-judgement-detail" id="rg-judgement-detail">等待第一輪開始。</div>
-                                </div>
-                            </div>
+                        <div id="rg-legacy-ui" hidden aria-hidden="true">
+                            <div id="rg-accuracy-value"></div>
+                            <div id="rg-progress-value"></div>
+                            <div id="rg-status-copy"></div>
+                            <div id="rg-judgement-value"></div>
+                            <div id="rg-judgement-detail"></div>
+                            <div id="rg-results"></div>
+                            <div id="rg-result-bias"></div>
+                            <div id="rg-result-combo"></div>
+                        </div>
 
-                            <div class="rhythm-game-lanes" id="rg-lanes">
-                                <div class="rhythm-game-track-line" aria-hidden="true"></div>
-                                <div class="rhythm-game-lane" data-lane="0">
-                                    <div class="rhythm-game-lane-rail"></div>
-                                    <div class="rhythm-game-lane-label">Lane 1</div>
-                                    <div class="rhythm-game-lane-keycap">D</div>
-                                </div>
-                                <div class="rhythm-game-lane" data-lane="1">
-                                    <div class="rhythm-game-lane-rail"></div>
-                                    <div class="rhythm-game-lane-label">Lane 2</div>
-                                    <div class="rhythm-game-lane-keycap">F</div>
-                                </div>
-                                <div class="rhythm-game-lane" data-lane="2">
-                                    <div class="rhythm-game-lane-rail"></div>
-                                    <div class="rhythm-game-lane-label">Lane 3</div>
-                                    <div class="rhythm-game-lane-keycap">J</div>
-                                </div>
-                                <div class="rhythm-game-lane" data-lane="3">
-                                    <div class="rhythm-game-lane-rail"></div>
-                                    <div class="rhythm-game-lane-label">Lane 4</div>
-                                    <div class="rhythm-game-lane-keycap">K</div>
-                                </div>
+                        <div class="rhythm-game-lanes" id="rg-lanes">
+                            <div class="rhythm-game-track-line" aria-hidden="true"></div>
+                            <div class="rhythm-game-lane" data-lane="0">
+                                <div class="rhythm-game-lane-rail"></div>
+                                <div class="rhythm-game-lane-label">Lane 1</div>
+                                <div class="rhythm-game-lane-keycap">D</div>
                             </div>
-
-                            <div class="rhythm-game-footer">
-                                <div class="rhythm-game-footer-card">
-                                    <div class="rhythm-game-preview-label">Windows</div>
-                                    <div class="rhythm-game-footer-value">Perfect ±70ms<br>Good ±130ms<br>Miss after ±200ms</div>
-                                </div>
-                                <div class="rhythm-game-footer-card">
-                                    <div class="rhythm-game-preview-label">Pattern</div>
-                                    <div class="rhythm-game-footer-value">從單拍、左右換手到短連打，讓你能快速抓出 BPM 與下落速度是否合理。</div>
-                                </div>
-                                <div class="rhythm-game-footer-card">
-                                    <div class="rhythm-game-preview-label">Goal</div>
-                                    <div class="rhythm-game-footer-value">先把 timing 手感定下來，後面再決定要不要接真音樂、hold note、長條譜或譜面編輯器。</div>
-                                </div>
+                            <div class="rhythm-game-lane" data-lane="1">
+                                <div class="rhythm-game-lane-rail"></div>
+                                <div class="rhythm-game-lane-label">Lane 2</div>
+                                <div class="rhythm-game-lane-keycap">F</div>
                             </div>
-
-                            <div class="rhythm-game-results" id="rg-results">
-                                <div class="rhythm-game-result-box">
-                                    <div class="rhythm-game-preview-label">Result</div>
-                                    <div class="rhythm-game-result-value" id="rg-result-grade">-</div>
-                                    <div class="rhythm-game-result-note" id="rg-result-summary">完成一輪後，這裡會顯示你目前最需要調整的方向。</div>
-                                </div>
-                                <div class="rhythm-game-result-box">
-                                    <div class="rhythm-game-preview-label">Timing Bias</div>
-                                    <div class="rhythm-game-result-value" id="rg-result-bias">-</div>
-                                    <div class="rhythm-game-result-note">平均偏早或偏晚，對之後調整 note speed 與 offset 很有幫助。</div>
-                                </div>
-                                <div class="rhythm-game-result-box">
-                                    <div class="rhythm-game-preview-label">Best Combo</div>
-                                    <div class="rhythm-game-result-value" id="rg-result-combo">0</div>
-                                    <div class="rhythm-game-result-note">看看目前能不能穩定把一整段 pattern 串起來。</div>
-                                </div>
+                            <div class="rhythm-game-lane" data-lane="2">
+                                <div class="rhythm-game-lane-rail"></div>
+                                <div class="rhythm-game-lane-label">Lane 3</div>
+                                <div class="rhythm-game-lane-keycap">J</div>
+                            </div>
+                            <div class="rhythm-game-lane" data-lane="3">
+                                <div class="rhythm-game-lane-rail"></div>
+                                <div class="rhythm-game-lane-label">Lane 4</div>
+                                <div class="rhythm-game-lane-keycap">K</div>
                             </div>
                         </div>
                     </div>
@@ -3412,3 +3131,6 @@
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>
+
+
+
