@@ -112,6 +112,17 @@ export function createRhythmGameModule({
     const resultGrade = document.getElementById('rg-result-grade');
     const resultBias = document.getElementById('rg-result-bias');
     const resultCombo = document.getElementById('rg-result-combo');
+    const finishModal = document.getElementById('rg-finish-modal');
+    const finishBackdrop = document.getElementById('rg-finish-backdrop');
+    const finishCopy = document.getElementById('rg-finish-copy');
+    const finishScoreValue = document.getElementById('rg-finish-score-value');
+    const finishResultValue = document.getElementById('rg-finish-result-value');
+    const finishComboValue = document.getElementById('rg-finish-combo-value');
+    const finishAccuracyValue = document.getElementById('rg-finish-accuracy-value');
+    const finishPlayerIdInput = document.getElementById('rg-finish-player-id-input');
+    const finishUploadButton = document.getElementById('rg-finish-upload-button');
+    const finishRetryButton = document.getElementById('rg-finish-retry-button');
+    const finishNote = document.getElementById('rg-finish-note');
     const leaderboardList = document.getElementById('rg-leaderboard-list');
     const playerIdInput = document.getElementById('rg-player-id-input');
     const laneElements = Array.from(container.querySelectorAll('.rhythm-game-lane'));
@@ -119,6 +130,10 @@ export function createRhythmGameModule({
 
     const chart = createDemoChart();
     const chartDuration = chart.notes.reduce((maxTime, note) => Math.max(maxTime, note.time + (note.duration ?? 0)), 0);
+    const maxPossibleScore = chart.notes.reduce((total, note) => {
+        const reward = note.type === 'hold' ? getHoldReward('perfect') : getTapReward('perfect');
+        return total + reward.score;
+    }, 0);
 
     let rhythmInstrument = null;
     let rhythmLofiVibrato = null;
@@ -141,10 +156,12 @@ export function createRhythmGameModule({
     let missCount = 0;
     const activeHoldNotes = new Map();
     const holdSprayTimers = new Map();
+    let pendingFinishResult = null;
+    let isFinishModalOpen = false;
     const LEADERBOARD_LIMIT = 10;
     const LEADERBOARD_STORAGE_KEY = 'visual-music-game.rhythm.leaderboard.v1';
     const PLAYER_ID_STORAGE_KEY = 'visual-music-game.rhythm.player-id.v1';
-    let playerId = 'Guest';
+    let playerId = '';
     let leaderboardEntries = [];
 
     function readStoredJson(storageKey, fallbackValue) {
@@ -170,21 +187,28 @@ export function createRhythmGameModule({
         return value.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, 16);
     }
 
+    function syncPlayerIdFields(nextId) {
+        if (playerIdInput && playerIdInput.value !== nextId) {
+            playerIdInput.value = nextId;
+        }
+        if (finishPlayerIdInput && finishPlayerIdInput.value !== nextId) {
+            finishPlayerIdInput.value = nextId;
+        }
+    }
+
     function loadPlayerId() {
         const storedId = readStoredJson(PLAYER_ID_STORAGE_KEY, null);
         const nextId = normalizePlayerId(typeof storedId === 'string' ? storedId : '');
-        const resolvedId = nextId || 'Guest';
-        writeStoredJson(PLAYER_ID_STORAGE_KEY, resolvedId);
-        if (playerIdInput) {
-            playerIdInput.value = resolvedId;
-        }
-        return resolvedId;
+        writeStoredJson(PLAYER_ID_STORAGE_KEY, nextId);
+        syncPlayerIdFields(nextId);
+        return nextId;
     }
 
     function savePlayerId(value) {
         const nextId = normalizePlayerId(value);
-        playerId = nextId || 'Guest';
+        playerId = nextId;
         writeStoredJson(PLAYER_ID_STORAGE_KEY, playerId);
+        syncPlayerIdFields(playerId);
         return playerId;
     }
 
@@ -302,7 +326,7 @@ export function createRhythmGameModule({
             return false;
         }
 
-        if (target === playerIdInput) {
+        if (target === playerIdInput || target === finishPlayerIdInput) {
             return true;
         }
 
@@ -314,23 +338,31 @@ export function createRhythmGameModule({
         return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT';
     }
 
-    if (playerIdInput) {
-        playerIdInput.addEventListener('input', () => {
-            savePlayerId(playerIdInput.value);
+    function bindPlayerIdField(input) {
+        if (!input) return;
+
+        input.addEventListener('input', () => {
+            savePlayerId(input.value);
+
         });
 
-        playerIdInput.addEventListener('blur', () => {
-            playerIdInput.value = savePlayerId(playerIdInput.value);
+        input.addEventListener('blur', () => {
+            input.value = savePlayerId(input.value);
+
         });
 
-        playerIdInput.addEventListener('keydown', (event) => {
+        input.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                playerIdInput.value = savePlayerId(playerIdInput.value);
-                playerIdInput.blur();
+                input.value = savePlayerId(input.value);
+
+                input.blur();
             }
         });
     }
+
+    bindPlayerIdField(playerIdInput);
+    bindPlayerIdField(finishPlayerIdInput);
 
     playerId = loadPlayerId();
     leaderboardEntries = loadLeaderboardEntries();
@@ -377,6 +409,151 @@ export function createRhythmGameModule({
         judgementDetail.textContent = detail;
     }
 
+    function updateScoreAppearance() {
+        const scoreStat = scoreValue?.closest('.rhythm-game-stat');
+        if (!scoreStat) return;
+
+        const ratio = maxPossibleScore <= 0 ? 0 : Math.max(0, Math.min(1, score / maxPossibleScore));
+        const eased = Math.pow(ratio, 0.78);
+        const hue = 210 - (eased * 155);
+        const saturation = 52 + (eased * 38);
+        const lightness = 62 + (eased * 12);
+        const glowAlpha = 0.12 + (eased * 0.34);
+        const borderAlpha = 0.16 + (eased * 0.22);
+        const textColor = `hsl(${hue.toFixed(1)} ${saturation.toFixed(1)}% ${lightness.toFixed(1)}%)`;
+        const glowColor = `hsla(${hue.toFixed(1)} ${saturation.toFixed(1)}% 68% / ${glowAlpha.toFixed(3)})`;
+        const borderColor = `hsla(${hue.toFixed(1)} ${saturation.toFixed(1)}% 58% / ${borderAlpha.toFixed(3)})`;
+
+        scoreStat.style.setProperty('--score-value-color', textColor);
+        scoreStat.style.setProperty('--score-text-glow', glowColor);
+        scoreStat.style.setProperty('--score-glow', glowColor);
+        scoreStat.style.setProperty('--score-border', borderColor);
+    }
+
+    function updateComboAppearance() {
+        const comboStat = comboValue?.closest('.rhythm-game-stat');
+        if (!comboStat) return;
+
+        const ratio = notes.length <= 0 ? 0 : Math.max(0, Math.min(1, combo / notes.length));
+        const eased = Math.pow(ratio, 0.72);
+        const hue = 198 - (eased * 132);
+        const saturation = 50 + (eased * 36);
+        const lightness = 61 + (eased * 11);
+        const glowAlpha = 0.10 + (eased * 0.30);
+        const borderAlpha = 0.14 + (eased * 0.20);
+        const textColor = `hsl(${hue.toFixed(1)} ${saturation.toFixed(1)}% ${lightness.toFixed(1)}%)`;
+        const glowColor = `hsla(${hue.toFixed(1)} ${saturation.toFixed(1)}% 68% / ${glowAlpha.toFixed(3)})`;
+        const borderColor = `hsla(${hue.toFixed(1)} ${saturation.toFixed(1)}% 58% / ${borderAlpha.toFixed(3)})`;
+
+        comboStat.style.setProperty('--combo-value-color', textColor);
+        comboStat.style.setProperty('--combo-text-glow', glowColor);
+        comboStat.style.setProperty('--combo-glow', glowColor);
+        comboStat.style.setProperty('--combo-border', borderColor);
+    }
+
+    function updateResultAppearance(accuracy = null, grade = '-') {
+        const resultStat = resultGrade?.closest('.rhythm-game-stat');
+        if (!resultStat) return;
+
+        const palette = {
+            A: { hue: 46, saturation: 92, lightness: 69 },
+            B: { hue: 180, saturation: 76, lightness: 67 },
+            C: { hue: 220, saturation: 82, lightness: 66 },
+            D: { hue: 352, saturation: 86, lightness: 67 }
+        };
+        const tone = palette[grade] ?? { hue: 0, saturation: 0, lightness: 78 };
+        const accuracyValue = Number.isFinite(accuracy) ? Math.max(0, Math.min(100, accuracy)) : 0;
+        const glowAlpha = 0.12 + (accuracyValue / 100) * 0.30;
+        const borderAlpha = 0.15 + (accuracyValue / 100) * 0.20;
+        const textColor = `hsl(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% ${tone.lightness.toFixed(1)}%)`;
+        const glowColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 68% / ${glowAlpha.toFixed(3)})`;
+        const borderColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 58% / ${borderAlpha.toFixed(3)})`;
+
+        resultStat.style.setProperty('--result-value-color', textColor);
+        resultStat.style.setProperty('--result-text-glow', glowColor);
+        resultStat.style.setProperty('--result-glow', glowColor);
+        resultStat.style.setProperty('--result-border', borderColor);
+    }
+
+    function focusFinishPlayerIdInput(selectAll = false) {
+        if (!finishPlayerIdInput) return;
+
+        finishPlayerIdInput.focus();
+        if (selectAll && typeof finishPlayerIdInput.select === 'function') {
+            finishPlayerIdInput.select();
+        }
+    }
+
+    function updateFinishUploadButtonState() {
+        if (!finishUploadButton) return;
+
+        const nextId = normalizePlayerId(finishPlayerIdInput?.value ?? '');
+        const canUpload = Boolean(pendingFinishResult) && nextId.length > 0;
+        finishUploadButton.disabled = !canUpload;
+        finishUploadButton.classList.toggle('is-disabled', !canUpload);
+        if (finishNote) {
+            finishNote.textContent = canUpload
+                ? '按下上傳後，成績會寫入排行榜。'
+                : '如果沒有輸入 ID，按鈕會保持鎖定。';
+        }
+    }
+
+    function setFinishModalVisible(nextVisible) {
+        if (!finishModal) return;
+
+        isFinishModalOpen = nextVisible;
+        finishModal.classList.toggle('ui-hidden', !nextVisible);
+        finishModal.classList.toggle('is-visible', nextVisible);
+        finishModal.setAttribute('aria-hidden', nextVisible ? 'false' : 'true');
+        updateFinishUploadButtonState();
+
+        if (nextVisible) {
+            window.setTimeout(() => focusFinishPlayerIdInput(true), 0);
+        }
+    }
+
+    function openFinishModal({ score: finalScore, grade, accuracy, combo: finalCombo, biasLabel }) {
+        pendingFinishResult = { score: finalScore, grade, accuracy, combo: finalCombo, biasLabel };
+
+        if (finishScoreValue) finishScoreValue.textContent = finalScore.toLocaleString();
+        if (finishResultValue) finishResultValue.textContent = grade;
+        if (finishComboValue) finishComboValue.textContent = String(finalCombo);
+        if (finishAccuracyValue) finishAccuracyValue.textContent = `${accuracy}%`;
+        if (finishCopy) {
+            finishCopy.textContent = '這局的結果已經算好了。現在輸入 ID，按上傳就會進排行榜。' + (biasLabel ? ` 你的節奏偏向 ${biasLabel}。` : '');
+        }
+        if (finishPlayerIdInput) {
+            finishPlayerIdInput.value = playerId || '';
+        }
+
+        setFinishModalVisible(true);
+    }
+
+    function closeFinishModal() {
+        setFinishModalVisible(false);
+    }
+
+    function submitFinishResult() {
+        if (!pendingFinishResult) return;
+
+        const nextId = savePlayerId(finishPlayerIdInput?.value ?? playerId);
+        if (!nextId) {
+            if (finishNote) {
+                finishNote.textContent = '請先輸入 ID，再上傳結果。';
+            }
+            focusFinishPlayerIdInput(true);
+
+            return;
+        }
+
+        recordLeaderboardEntry(pendingFinishResult.score, pendingFinishResult.grade);
+        pendingFinishResult = null;
+        closeFinishModal();
+        setJudgement('Uploaded', '成績已寫入排行榜。');
+        statusCopy.textContent = '成績已上傳，你可以直接再挑戰一次，或回到排行榜檢視結果。';
+
+    }
+
     function updateHud() {
         scoreValue.textContent = String(score);
         comboValue.textContent = String(combo);
@@ -388,6 +565,8 @@ export function createRhythmGameModule({
         if (perfectValue) perfectValue.textContent = String(perfectCount);
         if (goodValue) goodValue.textContent = String(goodCount);
         if (missValue) missValue.textContent = String(missCount);
+        updateScoreAppearance();
+        updateComboAppearance();
     }
 
     function updateProgressBar(runTime) {
@@ -514,6 +693,12 @@ export function createRhythmGameModule({
         resetStats();
         updateProgressBar(-LEAD_IN);
         results.classList.remove('active');
+        resultGrade.textContent = '-';
+        resultBias.textContent = '-';
+        resultCombo.textContent = '0';
+        updateResultAppearance();
+        pendingFinishResult = null;
+        closeFinishModal();
         panel.classList.remove('playing');
         startButton.textContent = 'Start Run';
         setJudgement('Ready', '????????');
@@ -798,7 +983,6 @@ export function createRhythmGameModule({
     function resetRun() {
         clearAutoStartTimer();
         isRunning = false;
-        clearAutoStartTimer();
         for (const timer of holdSprayTimers.values()) { clearInterval(timer); }
         holdSprayTimers.clear();
         activeHoldNotes.clear();
@@ -807,12 +991,12 @@ export function createRhythmGameModule({
     }
 
     function activate() {
-        if (!isRunning) {
-            scheduleAutoStart();
-        }
         isActive = true;
         if (!isRunning) {
-            scheduleAutoStart();
+            setJudgement('Ready', '先輸入 ID，再按 Start Run。');
+            if (playerIdInput && !playerId) {
+                focusPlayerIdInput(true);
+            }
         }
         startLoop();
     }
@@ -820,11 +1004,12 @@ export function createRhythmGameModule({
     function deactivate() {
         clearAutoStartTimer();
         isActive = false;
-        clearAutoStartTimer();
         isRunning = false;
         for (const timer of holdSprayTimers.values()) { clearInterval(timer); }
         holdSprayTimers.clear();
         activeHoldNotes.clear();
+        pendingFinishResult = null;
+        closeFinishModal();
         panel.classList.remove('playing');
         panel.classList.remove('finished');
         clearLaneFlashes();
@@ -856,6 +1041,7 @@ export function createRhythmGameModule({
         const laneIndex = LANE_KEYS.indexOf(key);
         if (laneIndex === -1) return false;
 
+        if (isFinishModalOpen) return false;
         if (isTypingInTextField(event)) return false;
 
         event.preventDefault();
@@ -903,6 +1089,7 @@ export function createRhythmGameModule({
         const laneIndex = LANE_KEYS.indexOf(key);
         if (laneIndex === -1) return false;
 
+        if (isFinishModalOpen) return false;
         if (isTypingInTextField(event)) return false;
 
         event.preventDefault();
@@ -970,7 +1157,8 @@ export function createRhythmGameModule({
         resultGrade.textContent = grade;
         resultBias.textContent = biasLabel;
         resultCombo.textContent = String(maxCombo);
-        recordLeaderboardEntry(score, grade);
+        updateResultAppearance(accuracy, grade);
+        openFinishModal({ score, grade, accuracy, combo: maxCombo, biasLabel });
         results.classList.add('active');
         setJudgement('Complete', `Perfect ${perfectCount} / Good ${goodCount} / Miss ${missCount}`);
         statusCopy.textContent = `這輪結束了。現在你可以一起感受 tap 與 hold 的節奏壓力，再決定判定窗和 note speed 要怎麼修。`;
@@ -984,6 +1172,23 @@ export function createRhythmGameModule({
                 console.error('Rhythm game start failed:', err);
                 setJudgement('Audio Error', '音訊初始化失敗，請確認瀏覽器允許播放音效。');
             });
+        });
+
+        finishUploadButton?.addEventListener('click', submitFinishResult);
+        finishRetryButton?.addEventListener('click', () => {
+            pendingFinishResult = null;
+            closeFinishModal();
+            resetRun();
+        });
+        finishBackdrop?.addEventListener('click', () => {
+            focusFinishPlayerIdInput(true);
+        });
+
+        finishPlayerIdInput?.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                focusFinishPlayerIdInput(true);
+            }
         });
     }
 
@@ -1001,5 +1206,8 @@ export function createRhythmGameModule({
         reset: resetRun
     };
 }
+
+
+
 
 
