@@ -822,12 +822,12 @@
 
         #top-bar-rhythm-stats {
             display: none;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 5px;
+            grid-template-columns: minmax(180px, 1.5fr) repeat(6, minmax(0, 0.82fr));
+            gap: 6px;
             margin-left: auto;
-            width: min(900px, calc(50vw - 12px));
+            width: min(980px, calc(56vw - 12px));
             min-width: 0;
-            max-width: calc(50vw - 12px);
+            max-width: calc(56vw - 12px);
             flex: 0 1 auto;
             align-items: stretch;
             color: #f8fdff;
@@ -863,6 +863,7 @@
         }
 
         #top-bar-rhythm-stats .rhythm-game-stat.is-score-stat {
+            min-width: 0;
             border-color: var(--score-border, rgba(255,255,255,0.07));
             box-shadow:
                 inset 0 1px 0 rgba(255,255,255,0.05),
@@ -873,10 +874,18 @@
 
         #top-bar-rhythm-stats .rhythm-game-stat.is-score-stat .rhythm-game-stat-value {
             color: var(--score-value-color, #ffffff);
+            font-size: clamp(19px, 1.5vw, 29px);
+            letter-spacing: 0.02em;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
             text-shadow:
                 0 0 10px var(--score-text-glow, rgba(255,255,255,0.1)),
                 0 0 18px var(--score-text-glow, rgba(255,255,255,0.08));
             transition: color 0.18s ease, text-shadow 0.18s ease;
+        }
+
+        #top-bar-rhythm-stats .rhythm-game-stat.is-score-stat .rhythm-game-stat-label {
+            color: rgba(255,255,255,0.82);
         }
 
         #top-bar-rhythm-stats .rhythm-game-stat.is-combo-stat {
@@ -911,6 +920,10 @@
                 0 0 10px var(--result-text-glow, rgba(255,255,255,0.1)),
                 0 0 18px var(--result-text-glow, rgba(255,255,255,0.08));
             transition: color 0.18s ease, text-shadow 0.18s ease;
+        }
+
+        #top-bar-rhythm-stats .rhythm-game-stat.is-result-stat .rhythm-game-stat-label {
+            color: rgba(255,255,255,0.82);
         }
 
         #top-bar-rhythm-stats .rhythm-game-stat-note {
@@ -1864,9 +1877,9 @@
 
         .rhythm-game-leaderboard {
             position: absolute;
-            top: 164px;
-            right: 24px;
-            width: 330px;
+            top: 152px;
+            right: 20px;
+            width: min(430px, calc(100vw - 40px));
             z-index: 2;
             display: none;
             pointer-events: auto;
@@ -1879,16 +1892,16 @@
         .rhythm-game-leaderboard-card {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            padding: 14px 12px 12px;
-            border-radius: 20px;
+            gap: 12px;
+            padding: 18px 16px 16px;
+            border-radius: 24px;
             border: 1px solid rgba(255,255,255,0.08);
             background:
                 linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
                 rgba(9, 14, 24, 0.72);
             box-shadow:
                 inset 0 1px 0 rgba(255,255,255,0.05),
-                0 18px 40px rgba(0,0,0,0.18);
+                0 22px 48px rgba(0,0,0,0.2);
             backdrop-filter: blur(14px);
             color: #f8fcff;
         }
@@ -1940,35 +1953,51 @@
         .rhythm-game-leaderboard-columns,
         .rhythm-game-leaderboard-row {
             display: grid;
-            grid-template-columns: 30px minmax(0, 1.25fr) 74px 58px;
+            grid-template-columns: 34px minmax(0, 1.45fr) minmax(76px, 88px) 38px minmax(54px, 72px);
             gap: 8px;
             align-items: center;
         }
 
         .rhythm-game-leaderboard-columns {
+            padding: 0 10px;
             color: rgba(255,255,255,0.68);
-            font-size: 10px;
-            letter-spacing: 0.13em;
+            font-size: 11px;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
+        }
+
+        .rhythm-game-leaderboard-columns > span:nth-child(3),
+        .rhythm-game-leaderboard-columns > span:nth-child(4) {
+            justify-self: end;
+        }
+
+        .rhythm-game-leaderboard-columns > span:nth-child(4) {
+            grid-column: 5;
+            justify-self: center;
+            text-align: center;
+        }
+
+        .rhythm-game-leaderboard-spacer {
+            grid-column: 4;
         }
 
         .rhythm-game-leaderboard-list {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             max-height: none;
             overflow: visible;
-            padding-right: 2px;
+            padding-right: 0;
         }
 
         .rhythm-game-leaderboard-row {
-            min-height: 28px;
-            padding: 6px 8px;
-            border-radius: 12px;
+            min-height: 34px;
+            padding: 8px 10px;
+            border-radius: 14px;
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.05);
             color: rgba(255,255,255,0.94);
-            font-size: 12px;
+            font-size: 13px;
             line-height: 1.2;
         }
 
@@ -1997,12 +2026,12 @@
         .rhythm-game-leaderboard-rank {
             display: inline-grid;
             place-items: center;
-            width: 24px;
-            height: 24px;
+            width: 26px;
+            height: 26px;
             border-radius: 999px;
             background: rgba(255,255,255,0.08);
             color: rgba(255,255,255,0.78);
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.06em;
             font-variant-numeric: tabular-nums;
@@ -2024,14 +2053,8 @@
         }
 
         .rhythm-game-leaderboard-row.is-rank-1 .rhythm-game-leaderboard-id,
-        .rhythm-game-leaderboard-row.is-rank-1 .rhythm-game-leaderboard-score,
-        .rhythm-game-leaderboard-row.is-rank-1 .rhythm-game-leaderboard-result,
         .rhythm-game-leaderboard-row.is-rank-2 .rhythm-game-leaderboard-id,
-        .rhythm-game-leaderboard-row.is-rank-2 .rhythm-game-leaderboard-score,
-        .rhythm-game-leaderboard-row.is-rank-2 .rhythm-game-leaderboard-result,
-        .rhythm-game-leaderboard-row.is-rank-3 .rhythm-game-leaderboard-id,
-        .rhythm-game-leaderboard-row.is-rank-3 .rhythm-game-leaderboard-score,
-        .rhythm-game-leaderboard-row.is-rank-3 .rhythm-game-leaderboard-result {
+        .rhythm-game-leaderboard-row.is-rank-3 .rhythm-game-leaderboard-id {
             color: #fff;
         }
 
@@ -2051,7 +2074,24 @@
         }
 
         .rhythm-game-leaderboard-score {
+            grid-column: 3;
             justify-self: end;
+            font-weight: 700;
+            color: var(--leaderboard-score-color, rgba(255, 226, 150, 0.95));
+            text-shadow:
+                0 0 8px var(--leaderboard-score-glow, rgba(255, 226, 150, 0.12)),
+                0 0 16px var(--leaderboard-score-glow, rgba(255, 226, 150, 0.08));
+        }
+
+        .rhythm-game-leaderboard-result {
+            grid-column: 5;
+            justify-self: center;
+            text-align: center;
+            font-weight: 700;
+            color: var(--leaderboard-result-color, rgba(163, 228, 255, 0.95));
+            text-shadow:
+                0 0 8px var(--leaderboard-result-glow, rgba(163, 228, 255, 0.12)),
+                0 0 16px var(--leaderboard-result-glow, rgba(163, 228, 255, 0.08));
         }
 
         .rhythm-game-actions {
@@ -3617,13 +3657,13 @@
                             <div class="rhythm-game-stat-label">Score</div>
                             <div class="rhythm-game-stat-value" id="rg-score-value">0</div>
                         </div>
-                        <div class="rhythm-game-stat is-combo-stat">
-                            <div class="rhythm-game-stat-label">Combo</div>
-                            <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
-                        </div>
                         <div class="rhythm-game-stat is-result-stat">
                             <div class="rhythm-game-stat-label">Result</div>
                             <div class="rhythm-game-stat-value" id="rg-result-grade">-</div>
+                        </div>
+                        <div class="rhythm-game-stat is-combo-stat">
+                            <div class="rhythm-game-stat-label">Combo</div>
+                            <div class="rhythm-game-stat-value" id="rg-combo-value">0</div>
                         </div>
                         <div class="rhythm-game-stat">
                             <div class="rhythm-game-stat-label">Accuracy</div>

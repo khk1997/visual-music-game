@@ -84,6 +84,24 @@ function getHoldReward(bucket) {
     return { score: 0, weight: 0, label: 'Miss' };
 }
 
+function getResultGrade(accuracy) {
+    const thresholds = [
+        { min: 98, label: 'S+' },
+        { min: 95, label: 'S' },
+        { min: 92, label: 'A+' },
+        { min: 88, label: 'A' },
+        { min: 84, label: 'B+' },
+        { min: 80, label: 'B' },
+        { min: 76, label: 'C+' },
+        { min: 72, label: 'C' },
+        { min: 68, label: 'D+' },
+        { min: 0, label: 'D' }
+    ];
+
+    const safeAccuracy = Number.isFinite(accuracy) ? Math.max(0, Math.min(100, accuracy)) : 0;
+    return thresholds.find((entry) => safeAccuracy >= entry.min)?.label ?? 'D';
+}
+
 export function createRhythmGameModule({
     container,
     initAudio,
@@ -159,7 +177,8 @@ export function createRhythmGameModule({
     let pendingFinishResult = null;
     let isFinishModalOpen = false;
     const LEADERBOARD_LIMIT = 10;
-    const LEADERBOARD_STORAGE_KEY = 'visual-music-game.rhythm.leaderboard.v1';
+    const LEADERBOARD_STORAGE_KEY = 'visual-music-game.rhythm.leaderboard.v2';
+    const LEGACY_LEADERBOARD_STORAGE_KEY = 'visual-music-game.rhythm.leaderboard.v1';
     const PLAYER_ID_STORAGE_KEY = 'visual-music-game.rhythm.player-id.v1';
     let playerId = '';
     let leaderboardEntries = [];
@@ -179,6 +198,14 @@ export function createRhythmGameModule({
             window.localStorage.setItem(storageKey, JSON.stringify(value));
         } catch {
             // Local storage can be unavailable in private mode; the leaderboard still works in-memory.
+        }
+    }
+
+    function clearLegacyLeaderboardStorage() {
+        try {
+            window.localStorage.removeItem(LEGACY_LEADERBOARD_STORAGE_KEY);
+        } catch {
+            // Ignore storage cleanup failures; the in-memory leaderboard still resets.
         }
     }
 
@@ -237,7 +264,26 @@ export function createRhythmGameModule({
             .slice(0, LEADERBOARD_LIMIT);
     }
 
+    function getLeaderboardScoreTone(scoreValue) {
+        const ratio = maxPossibleScore <= 0 ? 0 : Math.max(0, Math.min(1, scoreValue / maxPossibleScore));
+        const tone = getScoreTone(ratio);
+        return {
+            color: 'hsl(' + tone.hue.toFixed(1) + ' ' + tone.saturation.toFixed(1) + '% ' + tone.lightness.toFixed(1) + '%)',
+            glow: 'hsla(' + tone.hue.toFixed(1) + ' ' + tone.saturation.toFixed(1) + '% 68% / ' + tone.glow.toFixed(3) + ')'
+        };
+    }
+
+    function getLeaderboardResultTone(resultValue, scoreValue) {
+        const ratio = maxPossibleScore <= 0 ? 0 : Math.max(0, Math.min(1, scoreValue / maxPossibleScore));
+        const tone = getResultTone(resultValue, ratio * 100);
+        return {
+            color: 'hsl(' + tone.hue.toFixed(1) + ' ' + tone.saturation.toFixed(1) + '% ' + tone.lightness.toFixed(1) + '%)',
+            glow: 'hsla(' + tone.hue.toFixed(1) + ' ' + tone.saturation.toFixed(1) + '% 68% / ' + tone.glow.toFixed(3) + ')'
+        };
+    }
+
     function renderLeaderboardEntries() {
+
         if (!leaderboardList) return;
 
         if (leaderboardEntries.length === 0) {
@@ -253,12 +299,18 @@ export function createRhythmGameModule({
             emptyId.textContent = 'No scores yet';
 
             const emptyScore = document.createElement('span');
+            emptyScore.className = 'rhythm-game-leaderboard-score';
             emptyScore.textContent = '-';
 
+            const emptySpacer = document.createElement('span');
+            emptySpacer.className = 'rhythm-game-leaderboard-spacer';
+            emptySpacer.setAttribute('aria-hidden', 'true');
+
             const emptyResult = document.createElement('span');
+            emptyResult.className = 'rhythm-game-leaderboard-result';
             emptyResult.textContent = '-';
 
-            emptyRow.append(emptyRank, emptyId, emptyScore, emptyResult);
+            emptyRow.append(emptyRank, emptyId, emptyScore, emptySpacer, emptyResult);
             leaderboardList.append(emptyRow);
             return;
         }
@@ -287,6 +339,13 @@ export function createRhythmGameModule({
             const resultCell = document.createElement('span');
             resultCell.className = 'rhythm-game-leaderboard-result';
             resultCell.textContent = entry.result;
+
+            const scoreTone = getLeaderboardScoreTone(entry.score);
+            const resultTone = getLeaderboardResultTone(entry.result, entry.score);
+            row.style.setProperty('--leaderboard-score-color', scoreTone.color);
+            row.style.setProperty('--leaderboard-score-glow', scoreTone.glow);
+            row.style.setProperty('--leaderboard-result-color', resultTone.color);
+            row.style.setProperty('--leaderboard-result-glow', resultTone.glow);
 
             row.append(rankCell, idCell, scoreCell, resultCell);
             return row;
@@ -364,6 +423,7 @@ export function createRhythmGameModule({
     bindPlayerIdField(playerIdInput);
     bindPlayerIdField(finishPlayerIdInput);
 
+    clearLegacyLeaderboardStorage();
     playerId = loadPlayerId();
     leaderboardEntries = loadLeaderboardEntries();
     renderLeaderboardEntries();
@@ -409,20 +469,63 @@ export function createRhythmGameModule({
         judgementDetail.textContent = detail;
     }
 
+    function getScoreTone(ratio) {
+        const bands = [
+            { min: 0.90, hue: 46, saturation: 98, lightness: 72, glow: 0.42, border: 0.28 },
+            { min: 0.75, hue: 24, saturation: 96, lightness: 69, glow: 0.34, border: 0.24 },
+            { min: 0.58, hue: 78, saturation: 92, lightness: 66, glow: 0.28, border: 0.20 },
+            { min: 0.40, hue: 160, saturation: 86, lightness: 63, glow: 0.22, border: 0.17 },
+            { min: 0.20, hue: 198, saturation: 80, lightness: 64, glow: 0.18, border: 0.14 },
+            { min: 0.00, hue: 220, saturation: 56, lightness: 66, glow: 0.12, border: 0.12 }
+        ];
+
+        return bands.find((band) => ratio >= band.min) ?? bands[bands.length - 1];
+    }
+
+    function getResultTone(grade, accuracy = 0) {
+        const palette = {
+            'S+': { hue: 46, saturation: 100, lightness: 75, glow: 0.42, border: 0.28 },
+            S: { hue: 28, saturation: 98, lightness: 72, glow: 0.38, border: 0.26 },
+            'A+': { hue: 56, saturation: 96, lightness: 71, glow: 0.34, border: 0.24 },
+            A: { hue: 86, saturation: 92, lightness: 68, glow: 0.30, border: 0.22 },
+            'B+': { hue: 148, saturation: 86, lightness: 66, glow: 0.26, border: 0.20 },
+            B: { hue: 178, saturation: 82, lightness: 66, glow: 0.23, border: 0.18 },
+            'C+': { hue: 210, saturation: 82, lightness: 65, glow: 0.20, border: 0.16 },
+            C: { hue: 232, saturation: 84, lightness: 65, glow: 0.18, border: 0.15 },
+            'D+': { hue: 320, saturation: 86, lightness: 66, glow: 0.16, border: 0.14 },
+            D: { hue: 344, saturation: 80, lightness: 66, glow: 0.14, border: 0.12 }
+        };
+
+        const baseTone = palette[grade] ?? palette.D;
+        const accuracyValue = Number.isFinite(accuracy) ? Math.max(0, Math.min(100, accuracy)) : 0;
+        const boost = accuracyValue / 100;
+
+        return {
+            hue: baseTone.hue,
+            saturation: Math.min(100, baseTone.saturation + (boost * 6)),
+            lightness: Math.min(78, baseTone.lightness + (boost * 4)),
+            glow: baseTone.glow + (boost * 0.18),
+            border: baseTone.border + (boost * 0.12)
+        };
+    }
+
     function updateScoreAppearance() {
         const scoreStat = scoreValue?.closest('.rhythm-game-stat');
         if (!scoreStat) return;
 
-        const ratio = maxPossibleScore <= 0 ? 0 : Math.max(0, Math.min(1, score / maxPossibleScore));
-        const eased = Math.pow(ratio, 0.78);
-        const hue = 210 - (eased * 155);
-        const saturation = 52 + (eased * 38);
-        const lightness = 62 + (eased * 12);
-        const glowAlpha = 0.12 + (eased * 0.34);
-        const borderAlpha = 0.16 + (eased * 0.22);
-        const textColor = `hsl(${hue.toFixed(1)} ${saturation.toFixed(1)}% ${lightness.toFixed(1)}%)`;
-        const glowColor = `hsla(${hue.toFixed(1)} ${saturation.toFixed(1)}% 68% / ${glowAlpha.toFixed(3)})`;
-        const borderColor = `hsla(${hue.toFixed(1)} ${saturation.toFixed(1)}% 58% / ${borderAlpha.toFixed(3)})`;
+        if (score <= 0 || maxPossibleScore <= 0) {
+            scoreStat.style.setProperty('--score-value-color', '#ffffff');
+            scoreStat.style.setProperty('--score-text-glow', 'rgba(255,255,255,0.1)');
+            scoreStat.style.setProperty('--score-glow', 'rgba(255,255,255,0.08)');
+            scoreStat.style.setProperty('--score-border', 'rgba(255,255,255,0.07)');
+            return;
+        }
+
+        const ratio = Math.max(0, Math.min(1, score / maxPossibleScore));
+        const tone = getScoreTone(ratio);
+        const textColor = `hsl(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% ${tone.lightness.toFixed(1)}%)`;
+        const glowColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 68% / ${tone.glow.toFixed(3)})`;
+        const borderColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 58% / ${tone.border.toFixed(3)})`;
 
         scoreStat.style.setProperty('--score-value-color', textColor);
         scoreStat.style.setProperty('--score-text-glow', glowColor);
@@ -431,10 +534,19 @@ export function createRhythmGameModule({
     }
 
     function updateComboAppearance() {
+
         const comboStat = comboValue?.closest('.rhythm-game-stat');
         if (!comboStat) return;
 
-        const ratio = notes.length <= 0 ? 0 : Math.max(0, Math.min(1, combo / notes.length));
+        if (combo <= 0 || notes.length <= 0) {
+            comboStat.style.setProperty('--combo-value-color', '#ffffff');
+            comboStat.style.setProperty('--combo-text-glow', 'rgba(255,255,255,0.1)');
+            comboStat.style.setProperty('--combo-glow', 'rgba(255,255,255,0.08)');
+            comboStat.style.setProperty('--combo-border', 'rgba(255,255,255,0.07)');
+            return;
+        }
+
+        const ratio = Math.max(0, Math.min(1, combo / notes.length));
         const eased = Math.pow(ratio, 0.72);
         const hue = 198 - (eased * 132);
         const saturation = 50 + (eased * 36);
@@ -455,19 +567,18 @@ export function createRhythmGameModule({
         const resultStat = resultGrade?.closest('.rhythm-game-stat');
         if (!resultStat) return;
 
-        const palette = {
-            A: { hue: 46, saturation: 92, lightness: 69 },
-            B: { hue: 180, saturation: 76, lightness: 67 },
-            C: { hue: 220, saturation: 82, lightness: 66 },
-            D: { hue: 352, saturation: 86, lightness: 67 }
-        };
-        const tone = palette[grade] ?? { hue: 0, saturation: 0, lightness: 78 };
-        const accuracyValue = Number.isFinite(accuracy) ? Math.max(0, Math.min(100, accuracy)) : 0;
-        const glowAlpha = 0.12 + (accuracyValue / 100) * 0.30;
-        const borderAlpha = 0.15 + (accuracyValue / 100) * 0.20;
+        if (!grade || grade === '-' || !Number.isFinite(accuracy)) {
+            resultStat.style.setProperty('--result-value-color', '#ffffff');
+            resultStat.style.setProperty('--result-text-glow', 'rgba(255,255,255,0.1)');
+            resultStat.style.setProperty('--result-glow', 'rgba(255,255,255,0.08)');
+            resultStat.style.setProperty('--result-border', 'rgba(255,255,255,0.07)');
+            return;
+        }
+
+        const tone = getResultTone(grade, accuracy);
         const textColor = `hsl(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% ${tone.lightness.toFixed(1)}%)`;
-        const glowColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 68% / ${glowAlpha.toFixed(3)})`;
-        const borderColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 58% / ${borderAlpha.toFixed(3)})`;
+        const glowColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 68% / ${tone.glow.toFixed(3)})`;
+        const borderColor = `hsla(${tone.hue.toFixed(1)} ${tone.saturation.toFixed(1)}% 58% / ${tone.border.toFixed(3)})`;
 
         resultStat.style.setProperty('--result-value-color', textColor);
         resultStat.style.setProperty('--result-text-glow', glowColor);
@@ -476,6 +587,7 @@ export function createRhythmGameModule({
     }
 
     function focusFinishPlayerIdInput(selectAll = false) {
+
         if (!finishPlayerIdInput) return;
 
         finishPlayerIdInput.focus();
@@ -1146,13 +1258,7 @@ export function createRhythmGameModule({
             : averageOffsetMs < 0
                 ? `Early ${Math.abs(averageOffsetMs)}ms`
                 : `Late ${averageOffsetMs}ms`;
-        const grade = accuracy >= 92
-            ? 'A'
-            : accuracy >= 82
-                ? 'B'
-                : accuracy >= 70
-                    ? 'C'
-                    : 'D';
+        const grade = getResultGrade(accuracy);
 
         resultGrade.textContent = grade;
         resultBias.textContent = biasLabel;
@@ -1206,6 +1312,9 @@ export function createRhythmGameModule({
         reset: resetRun
     };
 }
+
+
+
 
 
 
