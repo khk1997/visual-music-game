@@ -702,10 +702,10 @@ export function createRhythmGameModule({
         if (note.type === 'hold') {
             if (note.state === 'holding') {
                 const remaining = Math.max(0, note.endTime - runTime);
-                return Math.max(14, (remaining / TRAVEL_TIME) * 100 - HOLD_VISUAL_GAP_PCT);
+                return Math.max(0, (remaining / TRAVEL_TIME) * 100 - HOLD_VISUAL_GAP_PCT);
             }
 
-            return Math.max(14, (note.duration / TRAVEL_TIME) * 100 - HOLD_VISUAL_GAP_PCT);
+            return Math.max(0, (note.duration / TRAVEL_TIME) * 100 - HOLD_VISUAL_GAP_PCT);
         }
 
         return TAP_VISUAL_HEIGHT_PCT;
@@ -1001,4 +1001,5 @@ export function createRhythmGameModule({
         reset: resetRun
     };
 }
+
 
