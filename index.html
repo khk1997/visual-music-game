@@ -108,6 +108,9 @@
                     <div id="current-key-label">C Major</div>
 
                     <div id="key-hint">Shift：升半音 / Ctrl：降半音</div>
+                    <button id="keyboard-guide-toggle" class="keyboard-guide-toggle" type="button" aria-expanded="false" aria-controls="keyboard-guide">
+                        Guide
+                    </button>
 
                     <div class="single-row custom-select">
                         <select id="sound-select">
@@ -179,6 +182,8 @@
                         <span class="record-slot-status">REC</span>
                     </button>
                 </div>
+
+                <div id="keyboard-guide" aria-hidden="true"></div>
             </div>
 
             <div id="absolute-pitch-ui">

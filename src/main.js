@@ -9,6 +9,8 @@ import {
     currentKeyLabel,
     freePlayCard,
     keySelect,
+    keyboardGuide,
+    keyboardGuideToggleButton,
     modeCards,
     modePanel,
     modeScreen,
@@ -38,6 +40,7 @@ import { createPointerInputController } from './input/pointer.js';
 import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 import { BACKGROUND_THEMES } from './themes/registry.js';
 import { createPianoFeedbackController } from './ui/piano-feedback.js';
+import { createKeyboardGuideController } from './ui/keyboard-guide.js';
 import { createScreenManager } from './ui/screen-manager.js';
 import { createThemePanelController } from './ui/theme-panel.js';
 import { updateBackgroundPointField } from './visual/background-ripples.js';
@@ -81,6 +84,7 @@ import {
         let backgroundVisualsReady = false;
         let screenManager = null;
         let themePanelController = null;
+        let keyboardGuideController = null;
         let recordSlotController = null;
         let liveInputController = null;
         let keyboardInputController = null;
@@ -268,11 +272,13 @@ import {
         keySelect.addEventListener('change', () => {
             currentKeyRoot = keySelect.value;
             updateKeyUI();
+            keyboardGuideController?.render();
         });
 
         modeSelect.addEventListener('change', () => {
             currentMode = modeSelect.value;
             updateKeyUI();
+            keyboardGuideController?.render();
         });
 
         // =========================================================
@@ -300,6 +306,14 @@ import {
         // 5. 視覺場景
         // =========================================================
         const { scene, camera, renderer } = createVisualScene();
+
+        keyboardGuideController = createKeyboardGuideController({
+            guideEl: keyboardGuide,
+            toggleButton: keyboardGuideToggleButton,
+            getCurrentKeyRoot: () => currentKeyRoot,
+            getCurrentMode: () => currentMode
+        });
+        keyboardGuideController.bind();
 
         themePanelController = createThemePanelController({
             backgroundToggleButton,
@@ -408,6 +422,9 @@ import {
             initAudio,
             isInstrumentLoading: getIsInstrumentLoading,
             onHomeEnter: () => transitionFromHome(freePlayCard, 'free-play'),
+            onGuideKeyDown: (key) => keyboardGuideController?.activateKey(key),
+            onGuideKeyUp: (key) => keyboardGuideController?.deactivateKey(key),
+            onGuideKeysClear: () => keyboardGuideController?.clearActiveKeys(),
             onLiveNoteOff: (payload) => liveInputController?.triggerNoteOff(payload),
             onLiveNoteOn: (payload) => liveInputController?.triggerNoteOn(payload),
             onRecordSlotHotkey: (index) => recordSlotController?.triggerSlot(index),
