@@ -145,7 +145,7 @@ export function syncPianoRollBarSetCount(barSet) {
     barSet.coreLayer.mesh.count = nextCount;
 }
 
-export function updatePianoRollBarLayerInstance(layer, slot, x, y, z, scaleY, color, alpha) {
+function updatePianoRollBarLayerInstance(layer, slot, x, y, z, scaleY, color, alpha) {
     if (!layer) return;
     pianoRollBarInstanceScratch.position.set(x, y, z);
     pianoRollBarInstanceScratch.scale.set(1, scaleY, 1);
@@ -156,6 +156,69 @@ export function updatePianoRollBarLayerInstance(layer, slot, x, y, z, scaleY, co
     layer.mesh.instanceMatrix.needsUpdate = true;
     layer.mesh.instanceColor.needsUpdate = true;
     layer.alphaAttr.needsUpdate = true;
+}
+
+export function clearPianoRollBarInstance(barSet, bar) {
+    if (!barSet || !bar) return;
+
+    updatePianoRollBarLayerInstance(barSet.auraLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
+    updatePianoRollBarLayerInstance(barSet.glowLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
+    updatePianoRollBarLayerInstance(barSet.coreLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
+    if (barSet.shadowLayer) {
+        updatePianoRollBarLayerInstance(barSet.shadowLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z - 0.001, 0.0001, WHITE_COLOR, 0);
+    }
+}
+
+export function updatePianoRollBarInstance(barSet, bar, baseOpacity) {
+    if (!barSet) return;
+
+    const shimmer = 0.94 + Math.sin(performance.now() * 0.01 + bar.midi * 0.35) * 0.08;
+    const scaleY = bar.currentHeight / bar.baseHeight;
+    const centerY = bar.positionY;
+
+    if (barSet.shadowLayer) {
+        updatePianoRollBarLayerInstance(
+            barSet.shadowLayer,
+            bar.slot,
+            bar.x,
+            centerY - bar.currentHeight * 0.03,
+            PIANO_ROLL_BAR_PLANE_Z - 0.001,
+            scaleY,
+            WHITE_COLOR,
+            baseOpacity * 0.18
+        );
+    }
+
+    updatePianoRollBarLayerInstance(
+        barSet.auraLayer,
+        bar.slot,
+        bar.x,
+        centerY,
+        PIANO_ROLL_BAR_PLANE_Z,
+        scaleY,
+        bar.color,
+        baseOpacity * 0.26 * shimmer
+    );
+    updatePianoRollBarLayerInstance(
+        barSet.glowLayer,
+        bar.slot,
+        bar.x,
+        centerY,
+        PIANO_ROLL_BAR_PLANE_Z,
+        scaleY,
+        bar.color,
+        baseOpacity * 0.78 * shimmer
+    );
+    updatePianoRollBarLayerInstance(
+        barSet.coreLayer,
+        bar.slot,
+        bar.x,
+        centerY,
+        PIANO_ROLL_BAR_PLANE_Z,
+        scaleY,
+        bar.coreColor,
+        Math.min(1, baseOpacity * 1.08)
+    );
 }
 
 function createPianoRollBarAlphaMaterial(config) {

@@ -47,15 +47,18 @@ import {
     PIANO_ROLL_BAR_PLANE_Z,
     MIST_TINT_COLOR,
     WHITE_COLOR,
+    clearPianoRollBarInstance,
     createPianoRollBarInstancingSystem,
     getEffectColor,
     syncPianoRollBarSetCount,
-    updatePianoRollBarLayerInstance
+    updatePianoRollBarInstance
 } from './visual/piano-roll-bars.js';
 import {
     acquirePianoRollJetIndices,
     createPianoRollJetBatch,
-    releasePianoRollJetEffect
+    initializePianoRollJetParticles,
+    releasePianoRollJetEffect,
+    updatePianoRollJetEffect
 } from './visual/piano-roll-jets.js';
 import {
     acquireMistEffect,
@@ -597,59 +600,6 @@ import {
             return isBlackKey ? pianoRollBarInstancing?.black : pianoRollBarInstancing?.white;
         }
 
-        function updatePianoRollBarInstance(bar, baseOpacity) {
-            const barSet = getPianoRollBarSet(bar.isBlackKey);
-            if (!barSet) return;
-
-            const shimmer = 0.94 + Math.sin(performance.now() * 0.01 + bar.midi * 0.35) * 0.08;
-            const scaleY = bar.currentHeight / bar.baseHeight;
-            const centerY = bar.positionY;
-
-            if (barSet.shadowLayer) {
-                updatePianoRollBarLayerInstance(
-                    barSet.shadowLayer,
-                    bar.slot,
-                    bar.x,
-                    centerY - bar.currentHeight * 0.03,
-                    PIANO_ROLL_BAR_PLANE_Z - 0.001,
-                    scaleY,
-                    WHITE_COLOR,
-                    baseOpacity * 0.18
-                );
-            }
-
-            updatePianoRollBarLayerInstance(
-                barSet.auraLayer,
-                bar.slot,
-                bar.x,
-                centerY,
-                PIANO_ROLL_BAR_PLANE_Z,
-                scaleY,
-                bar.color,
-                baseOpacity * 0.26 * shimmer
-            );
-            updatePianoRollBarLayerInstance(
-                barSet.glowLayer,
-                bar.slot,
-                bar.x,
-                centerY,
-                PIANO_ROLL_BAR_PLANE_Z,
-                scaleY,
-                bar.color,
-                baseOpacity * 0.78 * shimmer
-            );
-            updatePianoRollBarLayerInstance(
-                barSet.coreLayer,
-                bar.slot,
-                bar.x,
-                centerY,
-                PIANO_ROLL_BAR_PLANE_Z,
-                scaleY,
-                bar.coreColor,
-                Math.min(1, baseOpacity * 1.08)
-            );
-        }
-
         function acquirePianoRollBarSlot(isBlackKey) {
             const barSet = getPianoRollBarSet(isBlackKey);
             if (!barSet || barSet.freeSlots.length === 0) return null;
@@ -665,12 +615,7 @@ import {
             const barSet = getPianoRollBarSet(bar.isBlackKey);
             if (!barSet) return;
 
-            updatePianoRollBarLayerInstance(barSet.auraLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
-            updatePianoRollBarLayerInstance(barSet.glowLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
-            updatePianoRollBarLayerInstance(barSet.coreLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
-            if (barSet.shadowLayer) {
-                updatePianoRollBarLayerInstance(barSet.shadowLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z - 0.001, 0.0001, WHITE_COLOR, 0);
-            }
+            clearPianoRollBarInstance(barSet, bar);
             barSet.usedSlots[bar.slot] = 0;
             barSet.freeSlots.push(bar.slot);
             syncPianoRollBarSetCount(barSet);
@@ -726,7 +671,7 @@ import {
                 jetPulseTimer: 0.22 + Math.random() * 0.12
             };
 
-            updatePianoRollBarInstance(bar, bar.glowBaseOpacity);
+            updatePianoRollBarInstance(getPianoRollBarSet(bar.isBlackKey), bar, bar.glowBaseOpacity);
             activePianoRollBars.push(bar);
 
             if (isSustained) {
@@ -785,7 +730,7 @@ import {
                 }
 
                 bar.glowBaseOpacity += (targetGlowBaseOpacity - bar.glowBaseOpacity) * 0.1;
-                updatePianoRollBarInstance(bar, bar.glowBaseOpacity);
+                updatePianoRollBarInstance(getPianoRollBarSet(bar.isBlackKey), bar, bar.glowBaseOpacity);
 
                 if (bar.positionY > upperBound) {
                     releasePianoRollBarInstance(bar);
@@ -901,63 +846,7 @@ import {
             const batch = isBlackKey ? pianoRollJetBatches.black : pianoRollJetBatches.white;
             const indices = acquirePianoRollJetIndices(batch, count);
             if (!indices) return;
-            const {
-                pos,
-                vel,
-                drift,
-                sizes,
-                alphas,
-                colors,
-                ages,
-                phases,
-                swirl
-            } = batch;
-
-            for (let i = 0; i < count; i++) {
-                const particleIndex = indices[i];
-                const offset = particleIndex * 3;
-                const spread = (Math.random() - 0.5) * (isHeldPulse
-                    ? (isBlackKey ? 0.016 : 0.022)
-                    : (isBlackKey ? 0.014 : 0.019));
-                const lift = isHeldPulse
-                    ? 0.004 + Math.random() * 0.006
-                    : 0.0045 + Math.random() * 0.0065;
-                const color = getEffectColor(midi).lerp(
-                    WHITE_COLOR,
-                    isHeldPulse
-                        ? 0.12 + Math.random() * 0.08
-                        : 0.18 + Math.random() * 0.1
-                );
-
-                pos[offset] = point.x + spread * 0.3;
-                pos[offset + 1] = point.y - 0.008 + Math.random() * 0.012;
-                pos[offset + 2] = PIANO_ROLL_BAR_PLANE_Z + 0.008 + (Math.random() - 0.5) * 0.006;
-
-                vel[offset] = spread * 0.16;
-                vel[offset + 1] = lift;
-                vel[offset + 2] = 0;
-
-                drift[offset] = (Math.random() - 0.5) * 0.0014;
-                drift[offset + 1] = 0.00055 + Math.random() * 0.0008;
-                drift[offset + 2] = (Math.random() - 0.5) * 0.00035;
-
-                sizes[particleIndex] = (isHeldPulse ? 0.9 : 0.72) * ((isBlackKey ? 14 : 13) + Math.random() * 6);
-                alphas[particleIndex] = isHeldPulse
-                    ? 0.054 + Math.random() * 0.036
-                    : 0.05 + Math.random() * 0.045;
-                colors[offset] = color.r;
-                colors[offset + 1] = color.g;
-                colors[offset + 2] = color.b;
-                ages[particleIndex] = Math.random() * 0.18;
-                phases[particleIndex] = Math.random() * Math.PI * 2;
-                swirl[particleIndex] = 0.00045 + Math.random() * 0.00065;
-            }
-
-            batch.points.visible = true;
-            batch.posAttr.needsUpdate = true;
-            batch.sizeAttr.needsUpdate = true;
-            batch.alphaAttr.needsUpdate = true;
-            batch.colorAttr.needsUpdate = true;
+            initializePianoRollJetParticles(batch, indices, point, midi, isBlackKey, isHeldPulse);
 
             activePianoRollJets.push({
                 batch,
@@ -1165,39 +1054,7 @@ import {
             if (activePianoRollJets.length > 0) {
                 for (let i = activePianoRollJets.length - 1; i >= 0; i--) {
                     const jet = activePianoRollJets[i];
-                    const { batch, indices } = jet;
-                    let alive = 0;
-
-                    for (let j = 0; j < indices.length; j++) {
-                        const particleIndex = indices[j];
-                        if (batch.alphas[particleIndex] > 0.006) {
-                            const offset = particleIndex * 3;
-                            batch.ages[particleIndex] += 0.06;
-
-                            const swirlX = Math.sin(batch.ages[particleIndex] * 3.2 + batch.phases[particleIndex]) * batch.swirl[particleIndex];
-                            const swirlZ = Math.cos(batch.ages[particleIndex] * 2.4 + batch.phases[particleIndex] * 0.7) * batch.swirl[particleIndex] * 0.35;
-                            const pulse = jet.isHeldPulse
-                                ? 0.992 + Math.sin(batch.ages[particleIndex] * 1.15 + batch.phases[particleIndex]) * 0.012
-                                : 1;
-
-                            batch.vel[offset] += batch.drift[offset] + swirlX;
-                            batch.vel[offset + 1] += batch.drift[offset + 1];
-                            batch.vel[offset + 2] += batch.drift[offset + 2] + swirlZ;
-
-                            batch.pos[offset] += batch.vel[offset];
-                            batch.pos[offset + 1] += batch.vel[offset + 1];
-                            batch.pos[offset + 2] += batch.vel[offset + 2];
-
-                            batch.vel[offset] *= 0.84;
-                            batch.vel[offset + 1] *= 0.94;
-                            batch.vel[offset + 2] *= 0.84;
-                            batch.alphas[particleIndex] *= (jet.isHeldPulse ? 0.968 : 0.958) * pulse;
-                            alive++;
-                        }
-                    }
-
-                    batch.posAttr.needsUpdate = true;
-                    batch.alphaAttr.needsUpdate = true;
+                    const alive = updatePianoRollJetEffect(jet);
 
                     if (alive === 0) {
                         releasePianoRollJetEffect(jet);
