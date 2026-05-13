@@ -40,6 +40,36 @@ import { BACKGROUND_THEMES } from './themes/registry.js';
 import { createPianoFeedbackController } from './ui/piano-feedback.js';
 import { createScreenManager } from './ui/screen-manager.js';
 import { createThemePanelController } from './ui/theme-panel.js';
+import { updateBackgroundPointField } from './visual/background-ripples.js';
+import { updatePianoRollMaskMesh } from './visual/piano-roll-mask.js';
+import {
+    PIANO_ROLL_BAR_BASE_HEIGHT,
+    PIANO_ROLL_BAR_PLANE_Z,
+    MIST_TINT_COLOR,
+    WHITE_COLOR,
+    createPianoRollBarInstancingSystem,
+    getEffectColor,
+    syncPianoRollBarSetCount,
+    updatePianoRollBarLayerInstance
+} from './visual/piano-roll-bars.js';
+import {
+    acquirePianoRollJetIndices,
+    createPianoRollJetBatch,
+    releasePianoRollJetEffect
+} from './visual/piano-roll-jets.js';
+import {
+    acquireMistEffect,
+    acquireSparkEffect,
+    releaseMistEffect,
+    releaseSparkEffect
+} from './visual/effects.js';
+import { createVisualMaterials } from './visual/materials.js';
+import { createVisualScene } from './visual/scene.js';
+import {
+    createPianoRollBarTexture,
+    createHaloTexture,
+    createPS5Textures
+} from './visual/textures.js';
 
 // =========================================================
 // 1. 音源設定
@@ -266,20 +296,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
         // =========================================================
         // 5. 視覺場景
         // =========================================================
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000);
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 8;
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio || 1);
-        renderer.toneMapping = THREE.ReinhardToneMapping;
-        renderer.toneMappingExposure = 2.0;
-        document.body.appendChild(renderer.domElement);
-
-        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const { scene, camera, renderer } = createVisualScene();
 
         themePanelController = createThemePanelController({
             backgroundToggleButton,
@@ -342,21 +359,21 @@ import { createThemePanelController } from './ui/theme-panel.js';
             playVisualFeedback,
             releasePlaybackVisuals: (midi) => {
                 if (typeof midi === 'number') {
-                    triggerDeepBlueNoteOff('playback', midi);
+                    triggerPianoRollNoteOff('playback', midi);
                     return;
                 }
 
-                for (const barKey of Array.from(liveDeepBlueBars.keys())) {
+                for (const barKey of Array.from(livePianoRollBars.keys())) {
                     if (barKey.startsWith('playback:')) {
                         const playbackMidi = Number(barKey.split(':')[1]);
-                        triggerDeepBlueNoteOff('playback', playbackMidi);
+                        triggerPianoRollNoteOff('playback', playbackMidi);
                     }
                 }
             },
             supportsHeldNotes,
             tapDuration: PIANO_TAP_DURATION,
             triggerPlaybackNoteOn: (midi, sustained) => {
-                triggerDeepBlueNoteOn('playback', midi, sustained);
+                triggerPianoRollNoteOn('playback', midi, sustained);
             }
         });
         recordSlotController.bind();
@@ -371,11 +388,11 @@ import { createThemePanelController } from './ui/theme-panel.js';
             onStopVisualNotes: () => keyboardInputController?.stopActiveVisualKeys(),
             onVisualNoteOff: (midi) => {
                 highlightKey('user', midi, false);
-                triggerDeepBlueNoteOff('user', midi);
+                triggerPianoRollNoteOff('user', midi);
             },
             onVisualNoteOn: (midi, x, y, sustained) => {
                 playVisualFeedback('user', midi, x, y);
-                triggerDeepBlueNoteOn('user', midi, sustained);
+                triggerPianoRollNoteOn('user', midi, sustained);
             },
             supportsHeldNotes,
             tapDuration: PIANO_TAP_DURATION
@@ -444,552 +461,34 @@ import { createThemePanelController } from './ui/theme-panel.js';
         // =========================================================
         // 6. 貼圖生成
         // =========================================================
-        function createPS5Textures() {
-            function makeCanvas() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 128;
-                const ctx = canvas.getContext('2d');
-                ctx.lineCap = 'round';
-                return { canvas, ctx };
-            }
-
-            function drawSparkShapes(ctx, x, c, lw, sb) {
-                ctx.save();
-                ctx.translate(x, 64);
-                ctx.shadowColor = c;
-                ctx.shadowBlur = sb;
-                ctx.strokeStyle = c;
-                ctx.lineWidth = lw;
-
-                // 底層加一圈較淡的粗描邊，做出一點厚度感
-                ctx.globalAlpha = 0.38;
-                ctx.lineWidth = lw + 4;
-                if (x === 64) {
-                    ctx.beginPath();
-                    ctx.moveTo(-30, -30);
-                    ctx.lineTo(30, 30);
-                    ctx.moveTo(30, -30);
-                    ctx.lineTo(-30, 30);
-                    ctx.stroke();
-                }
-                if (x === 192) {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 35, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-                if (x === 320) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -35);
-                    ctx.lineTo(-35, 30);
-                    ctx.lineTo(35, 30);
-                    ctx.closePath();
-                    ctx.stroke();
-                }
-                if (x === 448) {
-                    ctx.beginPath();
-                    ctx.rect(-30, -30, 60, 60);
-                    ctx.stroke();
-                }
-
-                ctx.globalAlpha = 1;
-                ctx.lineWidth = lw;
-                if (x === 64) {
-                    ctx.beginPath();
-                    ctx.moveTo(-30, -30);
-                    ctx.lineTo(30, 30);
-                    ctx.moveTo(30, -30);
-                    ctx.lineTo(-30, 30);
-                    ctx.stroke();
-                }
-                if (x === 192) {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 35, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-                if (x === 320) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -35);
-                    ctx.lineTo(-35, 30);
-                    ctx.lineTo(35, 30);
-                    ctx.closePath();
-                    ctx.stroke();
-                }
-                if (x === 448) {
-                    ctx.beginPath();
-                    ctx.rect(-30, -30, 60, 60);
-                    ctx.stroke();
-                }
-
-                ctx.restore();
-            }
-
-            function carveHollowShape(ctx, x) {
-                if (x === 64) {
-                    ctx.beginPath();
-                    ctx.moveTo(-20, -20);
-                    ctx.lineTo(20, 20);
-                    ctx.moveTo(20, -20);
-                    ctx.lineTo(-20, 20);
-                    ctx.stroke();
-                }
-                if (x === 192) {
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 18, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
-                if (x === 320) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, -23);
-                    ctx.lineTo(-21, 16);
-                    ctx.lineTo(21, 16);
-                    ctx.closePath();
-                    ctx.stroke();
-                }
-                if (x === 448) {
-                    ctx.beginPath();
-                    ctx.rect(-18, -18, 36, 36);
-                    ctx.stroke();
-                }
-            }
-
-            function drawBackgroundShapes(ctx, x, fillColor) {
-                ctx.save();
-                ctx.translate(x, 64);
-                ctx.shadowColor = fillColor;
-                ctx.shadowBlur = 10;
-                ctx.fillStyle = fillColor;
-
-                ctx.beginPath();
-                ctx.arc(0, 0, 31, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 7;
-                carveHollowShape(ctx, x);
-                ctx.restore();
-            }
-
-            const { canvas: cC, ctx: cCtx } = makeCanvas();
-            drawSparkShapes(cCtx, 64, '#00d2ff', 8.8, 13);
-            drawSparkShapes(cCtx, 192, '#ff355e', 8.8, 13);
-            drawSparkShapes(cCtx, 320, '#00ff85', 8.8, 13);
-            drawSparkShapes(cCtx, 448, '#ff67e2', 8.8, 13);
-            const sparkTex = new THREE.CanvasTexture(cC);
-
-            const { canvas: bgC, ctx: bgCtx } = makeCanvas();
-            drawBackgroundShapes(bgCtx, 64, '#ffffff');
-            drawBackgroundShapes(bgCtx, 192, '#ffffff');
-            drawBackgroundShapes(bgCtx, 320, '#ffffff');
-            drawBackgroundShapes(bgCtx, 448, '#ffffff');
-            const bgTex = new THREE.CanvasTexture(bgC);
-
-            const mistCanvas = document.createElement('canvas');
-            mistCanvas.width = 128;
-            mistCanvas.height = 128;
-            const mistCtx = mistCanvas.getContext('2d');
-            const mistGradient = mistCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-            mistGradient.addColorStop(0, 'rgba(255,255,255,0.95)');
-            mistGradient.addColorStop(0.32, 'rgba(255,255,255,0.38)');
-            mistGradient.addColorStop(0.65, 'rgba(255,255,255,0.1)');
-            mistGradient.addColorStop(1, 'rgba(255,255,255,0)');
-            mistCtx.fillStyle = mistGradient;
-            mistCtx.beginPath();
-            mistCtx.arc(64, 64, 64, 0, Math.PI * 2);
-            mistCtx.fill();
-            const mistTex = new THREE.CanvasTexture(mistCanvas);
-
-            return { sparkTex, bgTex, mistTex };
-        }
-
         const { sparkTex, bgTex, mistTex } = createPS5Textures();
-
-        function createHaloTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-
-            const gradient = ctx.createRadialGradient(128, 128, 18, 128, 128, 128);
-            gradient.addColorStop(0, 'rgba(255,255,255,0.92)');
-            gradient.addColorStop(0.18, 'rgba(255,255,255,0.76)');
-            gradient.addColorStop(0.34, 'rgba(255,255,255,0.28)');
-            gradient.addColorStop(0.55, 'rgba(255,255,255,0.12)');
-            gradient.addColorStop(1, 'rgba(255,255,255,0)');
-
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(128, 128, 128, 0, Math.PI * 2);
-            ctx.fill();
-
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.needsUpdate = true;
-            return texture;
-        }
 
         const haloTexture = createHaloTexture();
 
-        function createDeepBlueBarTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-
-            const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
-            gradient.addColorStop(0, 'rgba(0, 210, 255, 0.0)');
-            gradient.addColorStop(0.14, 'rgba(0, 210, 255, 0.14)');
-            gradient.addColorStop(0.52, 'rgba(116, 211, 255, 0.72)');
-            gradient.addColorStop(0.9, 'rgba(183, 235, 255, 0.92)');
-            gradient.addColorStop(0.985, 'rgba(228, 248, 255, 0.82)');
-            gradient.addColorStop(1, 'rgba(228, 248, 255, 0.58)');
-
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const horizontalMask = ctx.createLinearGradient(0, 0, canvas.width, 0);
-            horizontalMask.addColorStop(0, 'rgba(255,255,255,0)');
-            horizontalMask.addColorStop(0.07, 'rgba(255,255,255,0.015)');
-            horizontalMask.addColorStop(0.16, 'rgba(255,255,255,0.06)');
-            horizontalMask.addColorStop(0.28, 'rgba(255,255,255,0.16)');
-            horizontalMask.addColorStop(0.4, 'rgba(255,255,255,0.34)');
-            horizontalMask.addColorStop(0.48, 'rgba(255,255,255,0.52)');
-            horizontalMask.addColorStop(0.5, 'rgba(255,255,255,0.58)');
-            horizontalMask.addColorStop(0.52, 'rgba(255,255,255,0.52)');
-            horizontalMask.addColorStop(0.6, 'rgba(255,255,255,0.34)');
-            horizontalMask.addColorStop(0.72, 'rgba(255,255,255,0.16)');
-            horizontalMask.addColorStop(0.84, 'rgba(255,255,255,0.06)');
-            horizontalMask.addColorStop(0.93, 'rgba(255,255,255,0.015)');
-            horizontalMask.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx.globalCompositeOperation = 'destination-in';
-            ctx.fillStyle = horizontalMask;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.globalCompositeOperation = 'source-over';
-
-            const coreGradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
-            coreGradient.addColorStop(0, 'rgba(255,255,255,0)');
-            coreGradient.addColorStop(0.18, 'rgba(70, 227, 255, 0.08)');
-            coreGradient.addColorStop(0.56, 'rgba(180, 244, 255, 0.32)');
-            coreGradient.addColorStop(0.9, 'rgba(255,255,255,0.18)');
-            coreGradient.addColorStop(1, 'rgba(255,255,255,0.1)');
-            ctx.fillStyle = coreGradient;
-            ctx.fillRect(canvas.width * 0.36, 0, canvas.width * 0.28, canvas.height);
-
-            const glowX = canvas.width * 0.5;
-            const glowY = 30;
-            const glowRadius = 48;
-            const glow = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, glowRadius);
-            glow.addColorStop(0, 'rgba(255,255,255,0.62)');
-            glow.addColorStop(0.5, 'rgba(164,230,255,0.26)');
-            glow.addColorStop(1, 'rgba(164,230,255,0)');
-            ctx.fillStyle = glow;
-            ctx.beginPath();
-            ctx.arc(glowX, glowY, glowRadius, 0, Math.PI * 2);
-            ctx.fill();
-
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.needsUpdate = true;
-            return texture;
-        }
-
-        const deepBlueBarTexture = createDeepBlueBarTexture();
-        const WHITE_COLOR = new THREE.Color(0xffffff);
-        const MIST_TINT_COLOR = new THREE.Color(0x6f8cff);
-        const EFFECT_COLOR_PALETTE = [
-            new THREE.Color(0x00f5d4),
-            new THREE.Color(0x3cf0ff),
-            new THREE.Color(0x7a5cff),
-            new THREE.Color(0xff4fa3),
-            new THREE.Color(0xefffff)
-        ];
-        const DEEP_BLUE_BAR_MAX_INSTANCES = 144;
-        const DEEP_BLUE_BAR_BASE_WIDTH = 0.18;
-        const DEEP_BLUE_BAR_BASE_HEIGHT = 0.03;
-        const deepBlueBarGeometries = {
-            shadow: new THREE.PlaneGeometry(DEEP_BLUE_BAR_BASE_WIDTH * 1.68, DEEP_BLUE_BAR_BASE_HEIGHT * 1.14),
-            aura: new THREE.PlaneGeometry(DEEP_BLUE_BAR_BASE_WIDTH * 1.78, DEEP_BLUE_BAR_BASE_HEIGHT),
-            glow: new THREE.PlaneGeometry(DEEP_BLUE_BAR_BASE_WIDTH * 1.28, DEEP_BLUE_BAR_BASE_HEIGHT),
-            core: new THREE.PlaneGeometry(DEEP_BLUE_BAR_BASE_WIDTH * 0.82, DEEP_BLUE_BAR_BASE_HEIGHT)
-        };
-        const deepBlueBarShadowMaterialProps = {
-            color: 0x000000,
-            transparent: true,
-            opacity: 0.18,
-            blending: THREE.NormalBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-            toneMapped: false
-        };
-        const deepBlueBarAuraMaterialProps = {
-            map: deepBlueBarTexture,
-            transparent: true,
-            opacity: 0.24,
-            blending: THREE.NormalBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-            toneMapped: false
-        };
-        const deepBlueBarGlowMaterialProps = {
-            map: deepBlueBarTexture,
-            transparent: true,
-            opacity: 0.46,
-            blending: THREE.NormalBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-            toneMapped: false
-        };
-        const deepBlueBarCoreMaterialProps = {
-            transparent: true,
-            opacity: 0.92,
-            blending: THREE.NormalBlending,
-            depthWrite: false,
-            side: THREE.DoubleSide,
-            toneMapped: false
-        };
+        const pianoRollBarTexture = createPianoRollBarTexture();
 
         // =========================================================
         // 7. 背景波紋
         // =========================================================
-        const bgUniforms = {
-            uTime: { value: 0 },
-            uTex: { value: bgTex },
-            uImpacts: { value: Array.from({ length: 20 }, () => new THREE.Vector3(100, 100, 0)) },
-            uImpactTimes: { value: Array(20).fill(-100) }
-        };
+        const {
+            bgUniforms,
+            bgMaterial,
+            pianoRollJetMaterial,
+            sparkMaterial,
+            mistMaterial
+        } = createVisualMaterials({ bgTex, mistTex, sparkTex });
 
-        let bgGeometry = null;
         let bgPoints = null;
         const BG_PLANE_Z = -2;
         const MIST_PLANE_Z = -0.35;
         const RING_PLANE_Z = 0.1;
         const SPARK_PLANE_Z = 0.2;
-        const DEEP_BLUE_BAR_PLANE_Z = -1.15;
-        const activeDeepBlueBars = [];
-        const liveDeepBlueBars = new Map();
-        const deepBlueBarInstanceScratch = new THREE.Object3D();
-        const deepBlueBarCoreColorScratch = new THREE.Color();
-        let deepBlueBarGroup = null;
-        let deepBlueBarInstancing = null;
-        let deepBlueMaskMesh = null;
-        const bgMaterial = new THREE.ShaderMaterial({
-            uniforms: bgUniforms,
-            vertexShader: `
-                uniform float uTime;
-                uniform vec3 uImpacts[20];
-                uniform float uImpactTimes[20];
-                attribute float aType;
-                varying float vGlow;
-                varying float vType;
-
-                void main() {
-                    vType = aType;
-
-                    float totalOsc = 0.0;
-                    float brightEffect = 0.0;
-                    float maxRad = 8.0;
-
-                    for (int i = 0; i < 20; i++) {
-                        float d = distance(position.xy, uImpacts[i].xy);
-                        float e = uTime - uImpactTimes[i];
-
-                        if (e > 0.0 && e < 4.0) {
-                            float waveR = maxRad * smoothstep(0.0, 1.5, e);
-                            float dec = exp(-e * 1.8) * exp(-d * 0.1);
-                            float rip = sin(d * 3.5 - e * 15.0);
-                            float m = smoothstep(2.5, 0.0, abs(d - waveR));
-
-                            totalOsc += rip * m * dec;
-                            brightEffect += m * dec * 1.0;
-                        }
-                    }
-
-                    vGlow = max(0.0, brightEffect + max(0.0, totalOsc * 1.35)) * 0.9;
-
-                    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-                    gl_PointSize = 1.18 * (1.0 + totalOsc * 1.2) * (350.0 / -mvPos.z);
-                    gl_Position = projectionMatrix * mvPos;
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D uTex;
-                varying float vGlow;
-                varying float vType;
-
-                void main() {
-                    vec2 uv = gl_PointCoord;
-                    uv.x = (uv.x + floor(vType)) / 4.0;
-                    vec4 tex = texture2D(uTex, uv);
-                    gl_FragColor = vec4(tex.rgb * vGlow, tex.a * vGlow * 0.25);
-                }
-            `,
-            transparent: true,
-            blending: THREE.NormalBlending,
-            depthWrite: false
-        });
-        const deepBlueJetMaterial = new THREE.ShaderMaterial({
-            uniforms: { uTex: { value: mistTex } },
-            vertexShader: `
-                attribute float aSize;
-                attribute float aAlpha;
-                attribute vec3 aColor;
-                varying float vAlpha;
-                varying vec3 vColor;
-
-                void main() {
-                    vAlpha = aAlpha;
-                    vColor = aColor;
-                    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-                    gl_PointSize = aSize * (0.45 + aAlpha * 0.9) * (350.0 / -mvPos.z);
-                    gl_Position = projectionMatrix * mvPos;
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D uTex;
-                varying float vAlpha;
-                varying vec3 vColor;
-
-                void main() {
-                    vec4 tex = texture2D(uTex, gl_PointCoord);
-                    gl_FragColor = vec4(vColor * tex.rgb, tex.a * vAlpha);
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        const sparkMaterial = new THREE.ShaderMaterial({
-            uniforms: { uTex: { value: sparkTex } },
-            vertexShader: `
-                attribute float aSize;
-                attribute float aAlpha;
-                attribute float aType;
-                attribute float aRotX;
-                attribute float aRotY;
-                attribute float aRotZ;
-
-                varying float vAlpha;
-                varying float vType;
-                varying float vRotX;
-                varying float vRotY;
-                varying float vRotZ;
-
-                void main() {
-                    vAlpha = aAlpha;
-                    vType = aType;
-                    vRotX = aRotX;
-                    vRotY = aRotY;
-                    vRotZ = aRotZ;
-
-                    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-                    gl_PointSize = aSize * (0.3 + 0.7 * aAlpha) * (350.0 / -mvPos.z);
-                    gl_Position = projectionMatrix * mvPos;
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D uTex;
-
-                varying float vAlpha;
-                varying float vType;
-                varying float vRotX;
-                varying float vRotY;
-                varying float vRotZ;
-
-                void main() {
-                    vec2 uv = gl_PointCoord - vec2(0.5);
-
-                    float cY = cos(vRotY);
-                    float cX = cos(vRotX);
-                    float sZ = sin(vRotZ);
-                    float cZ = cos(vRotZ);
-
-                    vec2 rotUV = vec2(
-                        uv.x * cZ - uv.y * sZ,
-                        uv.x * sZ + uv.y * cZ
-                    );
-
-                    vec2 rUV = rotUV;
-                    rUV.x /= (abs(cY) < 0.15 ? 0.15 : cY);
-                    rUV.y /= (abs(cX) < 0.15 ? 0.15 : cX);
-
-                    if (abs(rUV.x) > 0.5 || abs(rUV.y) > 0.5) discard;
-
-                    vec2 finalUV = rUV + 0.5;
-                    finalUV.x = (finalUV.x + floor(vType + 0.5)) / 4.0;
-
-                    vec4 texColor = texture2D(uTex, finalUV);
-                    gl_FragColor = vec4(texColor.rgb, texColor.a * vAlpha);
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        const mistMaterial = new THREE.ShaderMaterial({
-            uniforms: { uTex: { value: mistTex } },
-            vertexShader: `
-                attribute float aSize;
-                attribute float aAlpha;
-                attribute vec3 aColor;
-                varying float vAlpha;
-                varying vec3 vColor;
-
-                void main() {
-                    vAlpha = aAlpha;
-                    vColor = aColor;
-                    vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-                    gl_PointSize = aSize * (350.0 / -mvPos.z);
-                    gl_Position = projectionMatrix * mvPos;
-                }
-            `,
-            fragmentShader: `
-                uniform sampler2D uTex;
-                varying float vAlpha;
-                varying vec3 vColor;
-
-                void main() {
-                    vec4 tex = texture2D(uTex, gl_PointCoord);
-                    gl_FragColor = vec4(vColor * tex.rgb, tex.a * vAlpha);
-                }
-            `,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-
-        function createBgGeometry() {
-            // 固定 world space 間距
-            const spacing = 0.215;
-            // 取得相機參數
-            const aspect = window.innerWidth / window.innerHeight;
-            const fov = camera.fov * Math.PI / 180;
-            // 計算 z = -2 時的可見範圍（相機在 z=8）
-            const camZ = camera.position.z;
-            const planeZ = BG_PLANE_Z;
-            const dz = camZ - planeZ;
-            const viewHeight = 2 * Math.tan(fov / 2) * dz;
-            const viewWidth = viewHeight * aspect;
-            const xCount = Math.ceil(viewWidth / spacing) + 2;
-            const yCount = Math.ceil(viewHeight / spacing) + 2;
-            const xStart = -viewWidth / 2;
-            const yStart = -viewHeight / 2;
-
-            const bgPositions = [];
-            const bgTypes = [];
-            for (let i = 0; i < xCount; i++) {
-                for (let j = 0; j < yCount; j++) {
-                    const x = xStart + i * spacing;
-                    const y = yStart + j * spacing;
-                    bgPositions.push(x, y, planeZ);
-                    bgTypes.push((i + j * 2) % 4);
-                }
-            }
-
-            if (bgGeometry) bgGeometry.dispose();
-            bgGeometry = new THREE.BufferGeometry();
-            bgGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bgPositions, 3));
-            bgGeometry.setAttribute('aType', new THREE.Float32BufferAttribute(bgTypes, 1));
-            return bgGeometry;
-        }
+        const activePianoRollBars = [];
+        const livePianoRollBars = new Map();
+        const pianoRollBarCoreColorScratch = new THREE.Color();
+        let pianoRollBarGroup = null;
+        let pianoRollBarInstancing = null;
+        let pianoRollMaskMesh = null;
 
         function getPlaneViewSize(targetZ) {
             const aspect = window.innerWidth / window.innerHeight;
@@ -1003,70 +502,47 @@ import { createThemePanelController } from './ui/theme-panel.js';
 
         // 初始化與重建背景點
         function updateBgPoints() {
-            if (bgPoints) {
-                scene.remove(bgPoints);
-                bgPoints.geometry.dispose();
-                // material 不要 dispose，會重用
-            }
-            const geometry = createBgGeometry();
-            bgPoints = new THREE.Points(geometry, bgMaterial);
-            bgPoints.renderOrder = 0;
-            scene.add(bgPoints);
-            bgPoints.visible = usesLegacyGridEffects();
+            bgPoints = updateBackgroundPointField({
+                scene,
+                camera,
+                material: bgMaterial,
+                currentPoints: bgPoints,
+                planeZ: BG_PLANE_Z,
+                visible: usesLegacyGridEffects()
+            });
         }
 
-        function ensureDeepBlueBarGroup() {
-            if (deepBlueBarGroup) return;
-            deepBlueBarGroup = new THREE.Group();
-            deepBlueBarGroup.renderOrder = 1;
-            scene.add(deepBlueBarGroup);
-            deepBlueBarInstancing = createDeepBlueBarInstancingSystem(deepBlueBarGroup);
-            updateDeepBlueMask();
+        function ensurePianoRollBarGroup() {
+            if (pianoRollBarGroup) return;
+            pianoRollBarGroup = new THREE.Group();
+            pianoRollBarGroup.renderOrder = 1;
+            scene.add(pianoRollBarGroup);
+            pianoRollBarInstancing = createPianoRollBarInstancingSystem(pianoRollBarGroup, pianoRollBarTexture);
+            updatePianoRollMask();
         }
 
-        function usesDeepBlueNoteLanes() {
+        function usesPianoRollNoteLanes() {
             return getCurrentBackgroundTheme().id === 'piano-roll';
         }
 
-        function clearDeepBlueBars() {
-            for (let i = activeDeepBlueBars.length - 1; i >= 0; i--) {
-                releaseDeepBlueBarInstance(activeDeepBlueBars[i]);
+        function clearPianoRollBars() {
+            for (let i = activePianoRollBars.length - 1; i >= 0; i--) {
+                releasePianoRollBarInstance(activePianoRollBars[i]);
             }
-            activeDeepBlueBars.length = 0;
-            liveDeepBlueBars.clear();
+            activePianoRollBars.length = 0;
+            livePianoRollBars.clear();
         }
 
-        function updateDeepBlueMask() {
-            if (!deepBlueBarGroup || !pianoContainer) return;
-
-            if (deepBlueMaskMesh) {
-                deepBlueBarGroup.remove(deepBlueMaskMesh);
-                deepBlueMaskMesh.geometry.dispose();
-                deepBlueMaskMesh.material.dispose();
-                deepBlueMaskMesh = null;
-            }
-
-            const containerRect = pianoContainer.getBoundingClientRect();
-            if (!containerRect.height || !containerRect.width) return;
-
-            const topLeft = getScreenPointOnPlane(0, containerRect.top, DEEP_BLUE_BAR_PLANE_Z + 0.02);
-            const bottomRight = getScreenPointOnPlane(window.innerWidth, window.innerHeight, DEEP_BLUE_BAR_PLANE_Z + 0.02);
-            const { width: viewWidth } = getPlaneViewSize(DEEP_BLUE_BAR_PLANE_Z + 0.02);
-            const maskHeight = Math.max(0.01, topLeft.y - bottomRight.y);
-            const backgroundColor = getCurrentBackgroundTheme().color;
-
-            const geometry = new THREE.PlaneGeometry(viewWidth + 2, maskHeight);
-            const material = new THREE.MeshBasicMaterial({
-                color: backgroundColor,
-                transparent: false,
-                depthWrite: false,
-                toneMapped: false
+        function updatePianoRollMask() {
+            pianoRollMaskMesh = updatePianoRollMaskMesh({
+                group: pianoRollBarGroup,
+                currentMask: pianoRollMaskMesh,
+                pianoContainer,
+                getScreenPointOnPlane,
+                getPlaneViewSize,
+                backgroundColor: getCurrentBackgroundTheme().color,
+                planeZ: PIANO_ROLL_BAR_PLANE_Z
             });
-
-            deepBlueMaskMesh = new THREE.Mesh(geometry, material);
-            deepBlueMaskMesh.position.set(0, bottomRight.y + maskHeight * 0.5, DEEP_BLUE_BAR_PLANE_Z + 0.02);
-            deepBlueMaskMesh.renderOrder = 2;
-            deepBlueBarGroup.add(deepBlueMaskMesh);
         }
 
         function getMidiLanePositionX(midi, targetZ) {
@@ -1093,7 +569,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
             return { x: point.x, y: point.y };
         }
 
-        function getDeepBlueBarBottomY(bar) {
+        function getPianoRollBarBottomY(bar) {
             return bar.holding ? bar.entryY : bar.launchY;
         }
 
@@ -1101,10 +577,10 @@ import { createThemePanelController } from './ui/theme-panel.js';
             const laneGap = 0.06;
             let queuedLaunchY = baseLaunchY;
 
-            for (const bar of activeDeepBlueBars) {
+            for (const bar of activePianoRollBars) {
                 if (bar.midi !== midi) continue;
 
-                const barBottomY = getDeepBlueBarBottomY(bar);
+                const barBottomY = getPianoRollBarBottomY(bar);
                 if (barBottomY > queuedLaunchY - 2.2) {
                     queuedLaunchY = Math.min(queuedLaunchY, barBottomY - laneGap - initialHeight);
                 }
@@ -1117,157 +593,12 @@ import { createThemePanelController } from './ui/theme-panel.js';
             return [1, 3, 6, 8, 10].includes(midi % 12);
         }
 
-        function createDeepBlueBarAlphaMaterial(config) {
-            const material = new THREE.MeshBasicMaterial(config);
-            material.onBeforeCompile = (shader) => {
-                shader.vertexShader = shader.vertexShader.replace(
-                    '#include <common>',
-                    '#include <common>\nattribute float instanceAlpha;\nvarying float vInstanceAlpha;'
-                ).replace(
-                    '#include <begin_vertex>',
-                    '#include <begin_vertex>\nvInstanceAlpha = instanceAlpha;'
-                );
-                shader.fragmentShader = shader.fragmentShader.replace(
-                    '#include <common>',
-                    '#include <common>\nvarying float vInstanceAlpha;'
-                ).replace(
-                    'vec4 diffuseColor = vec4( diffuse, opacity );',
-                    'vec4 diffuseColor = vec4( diffuse, opacity * vInstanceAlpha );'
-                );
-            };
-            return material;
+        function getPianoRollBarSet(isBlackKey) {
+            return isBlackKey ? pianoRollBarInstancing?.black : pianoRollBarInstancing?.white;
         }
 
-        function createDeepBlueBarInstancedLayer({
-            baseGeometry,
-            material,
-            renderOrder
-        }) {
-            const geometry = baseGeometry.clone();
-            const alphaAttr = new THREE.InstancedBufferAttribute(new Float32Array(DEEP_BLUE_BAR_MAX_INSTANCES), 1);
-            geometry.setAttribute('instanceAlpha', alphaAttr);
-
-            const mesh = new THREE.InstancedMesh(geometry, material, DEEP_BLUE_BAR_MAX_INSTANCES);
-            mesh.renderOrder = renderOrder;
-            mesh.frustumCulled = false;
-            mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-
-            for (let i = 0; i < DEEP_BLUE_BAR_MAX_INSTANCES; i++) {
-                deepBlueBarInstanceScratch.position.set(0, 0, 0);
-                deepBlueBarInstanceScratch.scale.set(0.0001, 0.0001, 0.0001);
-                deepBlueBarInstanceScratch.updateMatrix();
-                mesh.setMatrixAt(i, deepBlueBarInstanceScratch.matrix);
-                mesh.setColorAt(i, WHITE_COLOR);
-                alphaAttr.setX(i, 0);
-            }
-
-            mesh.instanceMatrix.needsUpdate = true;
-            alphaAttr.needsUpdate = true;
-            return { mesh, alphaAttr };
-        }
-
-        function createDeepBlueBarSet({ isBlackKey, parent }) {
-            const freeSlots = [];
-            const usedSlots = new Uint8Array(DEEP_BLUE_BAR_MAX_INSTANCES);
-            for (let i = DEEP_BLUE_BAR_MAX_INSTANCES - 1; i >= 0; i--) {
-                freeSlots.push(i);
-            }
-
-            const renderBaseOrder = isBlackKey ? 6 : 3;
-            const shadowLayer = isBlackKey
-                ? createDeepBlueBarInstancedLayer({
-                    baseGeometry: deepBlueBarGeometries.shadow,
-                    material: createDeepBlueBarAlphaMaterial(deepBlueBarShadowMaterialProps),
-                    renderOrder: renderBaseOrder
-                })
-                : null;
-            const auraLayer = createDeepBlueBarInstancedLayer({
-                baseGeometry: deepBlueBarGeometries.aura,
-                material: createDeepBlueBarAlphaMaterial({
-                    color: 0xffffff,
-                    ...deepBlueBarAuraMaterialProps
-                }),
-                renderOrder: renderBaseOrder + 1
-            });
-            const glowLayer = createDeepBlueBarInstancedLayer({
-                baseGeometry: deepBlueBarGeometries.glow,
-                material: createDeepBlueBarAlphaMaterial({
-                    color: 0xffffff,
-                    ...deepBlueBarGlowMaterialProps
-                }),
-                renderOrder: renderBaseOrder + 2
-            });
-            const coreLayer = createDeepBlueBarInstancedLayer({
-                baseGeometry: deepBlueBarGeometries.core,
-                material: createDeepBlueBarAlphaMaterial({
-                    color: 0xffffff,
-                    ...deepBlueBarCoreMaterialProps
-                }),
-                renderOrder: renderBaseOrder + 3
-            });
-
-            if (shadowLayer) parent.add(shadowLayer.mesh);
-            parent.add(auraLayer.mesh);
-            parent.add(glowLayer.mesh);
-            parent.add(coreLayer.mesh);
-
-            return {
-                isBlackKey,
-                freeSlots,
-                usedSlots,
-                shadowLayer,
-                auraLayer,
-                glowLayer,
-                coreLayer
-            };
-        }
-
-        function createDeepBlueBarInstancingSystem(parent) {
-            return {
-                white: createDeepBlueBarSet({ isBlackKey: false, parent }),
-                black: createDeepBlueBarSet({ isBlackKey: true, parent })
-            };
-        }
-
-        function getDeepBlueBarSet(isBlackKey) {
-            return isBlackKey ? deepBlueBarInstancing?.black : deepBlueBarInstancing?.white;
-        }
-
-        function syncDeepBlueBarSetCount(barSet) {
-            if (!barSet) return;
-
-            let highestUsedSlot = -1;
-            for (let i = barSet.usedSlots.length - 1; i >= 0; i--) {
-                if (barSet.usedSlots[i]) {
-                    highestUsedSlot = i;
-                    break;
-                }
-            }
-
-            const nextCount = highestUsedSlot + 1;
-            if (barSet.shadowLayer) {
-                barSet.shadowLayer.mesh.count = nextCount;
-            }
-            barSet.auraLayer.mesh.count = nextCount;
-            barSet.glowLayer.mesh.count = nextCount;
-            barSet.coreLayer.mesh.count = nextCount;
-        }
-
-        function updateDeepBlueBarLayerInstance(layer, slot, x, y, z, scaleY, color, alpha) {
-            if (!layer) return;
-            deepBlueBarInstanceScratch.position.set(x, y, z);
-            deepBlueBarInstanceScratch.scale.set(1, scaleY, 1);
-            deepBlueBarInstanceScratch.updateMatrix();
-            layer.mesh.setMatrixAt(slot, deepBlueBarInstanceScratch.matrix);
-            layer.mesh.setColorAt(slot, color);
-            layer.alphaAttr.setX(slot, alpha);
-            layer.mesh.instanceMatrix.needsUpdate = true;
-            layer.mesh.instanceColor.needsUpdate = true;
-            layer.alphaAttr.needsUpdate = true;
-        }
-
-        function updateDeepBlueBarInstance(bar, baseOpacity) {
-            const barSet = getDeepBlueBarSet(bar.isBlackKey);
+        function updatePianoRollBarInstance(bar, baseOpacity) {
+            const barSet = getPianoRollBarSet(bar.isBlackKey);
             if (!barSet) return;
 
             const shimmer = 0.94 + Math.sin(performance.now() * 0.01 + bar.midi * 0.35) * 0.08;
@@ -1275,98 +606,98 @@ import { createThemePanelController } from './ui/theme-panel.js';
             const centerY = bar.positionY;
 
             if (barSet.shadowLayer) {
-                updateDeepBlueBarLayerInstance(
+                updatePianoRollBarLayerInstance(
                     barSet.shadowLayer,
                     bar.slot,
                     bar.x,
                     centerY - bar.currentHeight * 0.03,
-                    DEEP_BLUE_BAR_PLANE_Z - 0.001,
+                    PIANO_ROLL_BAR_PLANE_Z - 0.001,
                     scaleY,
                     WHITE_COLOR,
                     baseOpacity * 0.18
                 );
             }
 
-            updateDeepBlueBarLayerInstance(
+            updatePianoRollBarLayerInstance(
                 barSet.auraLayer,
                 bar.slot,
                 bar.x,
                 centerY,
-                DEEP_BLUE_BAR_PLANE_Z,
+                PIANO_ROLL_BAR_PLANE_Z,
                 scaleY,
                 bar.color,
                 baseOpacity * 0.26 * shimmer
             );
-            updateDeepBlueBarLayerInstance(
+            updatePianoRollBarLayerInstance(
                 barSet.glowLayer,
                 bar.slot,
                 bar.x,
                 centerY,
-                DEEP_BLUE_BAR_PLANE_Z,
+                PIANO_ROLL_BAR_PLANE_Z,
                 scaleY,
                 bar.color,
                 baseOpacity * 0.78 * shimmer
             );
-            updateDeepBlueBarLayerInstance(
+            updatePianoRollBarLayerInstance(
                 barSet.coreLayer,
                 bar.slot,
                 bar.x,
                 centerY,
-                DEEP_BLUE_BAR_PLANE_Z,
+                PIANO_ROLL_BAR_PLANE_Z,
                 scaleY,
                 bar.coreColor,
                 Math.min(1, baseOpacity * 1.08)
             );
         }
 
-        function acquireDeepBlueBarSlot(isBlackKey) {
-            const barSet = getDeepBlueBarSet(isBlackKey);
+        function acquirePianoRollBarSlot(isBlackKey) {
+            const barSet = getPianoRollBarSet(isBlackKey);
             if (!barSet || barSet.freeSlots.length === 0) return null;
             const slot = barSet.freeSlots.pop();
             barSet.usedSlots[slot] = 1;
-            syncDeepBlueBarSetCount(barSet);
+            syncPianoRollBarSetCount(barSet);
             return slot;
         }
 
-        function releaseDeepBlueBarInstance(bar) {
+        function releasePianoRollBarInstance(bar) {
             if (!bar) return;
 
-            const barSet = getDeepBlueBarSet(bar.isBlackKey);
+            const barSet = getPianoRollBarSet(bar.isBlackKey);
             if (!barSet) return;
 
-            updateDeepBlueBarLayerInstance(barSet.auraLayer, bar.slot, 0, 0, DEEP_BLUE_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
-            updateDeepBlueBarLayerInstance(barSet.glowLayer, bar.slot, 0, 0, DEEP_BLUE_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
-            updateDeepBlueBarLayerInstance(barSet.coreLayer, bar.slot, 0, 0, DEEP_BLUE_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
+            updatePianoRollBarLayerInstance(barSet.auraLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
+            updatePianoRollBarLayerInstance(barSet.glowLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
+            updatePianoRollBarLayerInstance(barSet.coreLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z, 0.0001, WHITE_COLOR, 0);
             if (barSet.shadowLayer) {
-                updateDeepBlueBarLayerInstance(barSet.shadowLayer, bar.slot, 0, 0, DEEP_BLUE_BAR_PLANE_Z - 0.001, 0.0001, WHITE_COLOR, 0);
+                updatePianoRollBarLayerInstance(barSet.shadowLayer, bar.slot, 0, 0, PIANO_ROLL_BAR_PLANE_Z - 0.001, 0.0001, WHITE_COLOR, 0);
             }
             barSet.usedSlots[bar.slot] = 0;
             barSet.freeSlots.push(bar.slot);
-            syncDeepBlueBarSetCount(barSet);
+            syncPianoRollBarSetCount(barSet);
         }
 
-        function getDeepBlueBarKey(source, midi) {
+        function getPianoRollBarKey(source, midi) {
             return `${source}:${midi}`;
         }
 
-        function startDeepBlueNoteBar(source, midi, isSustained) {
-            if (!usesDeepBlueNoteLanes()) return;
+        function startPianoRollNoteBar(source, midi, isSustained) {
+            if (!usesPianoRollNoteLanes()) return;
 
-            ensureDeepBlueBarGroup();
+            ensurePianoRollBarGroup();
 
-            const barKey = getDeepBlueBarKey(source, midi);
-            if (isSustained && liveDeepBlueBars.has(barKey)) return;
+            const barKey = getPianoRollBarKey(source, midi);
+            if (isSustained && livePianoRollBars.has(barKey)) return;
 
-            const launchPoint = getMidiLaunchPosition(midi, DEEP_BLUE_BAR_PLANE_Z);
+            const launchPoint = getMidiLaunchPosition(midi, PIANO_ROLL_BAR_PLANE_Z);
             const blackKey = isBlackKeyMidi(midi);
-            const slot = acquireDeepBlueBarSlot(blackKey);
+            const slot = acquirePianoRollBarSlot(blackKey);
             if (slot === null) return;
-            const initialHeight = DEEP_BLUE_BAR_BASE_HEIGHT;
+            const initialHeight = PIANO_ROLL_BAR_BASE_HEIGHT;
             const minFloatingHeight = 0.2 + ((midi % 12) / 12) * 0.1;
             const color = getEffectColor(midi);
             const queuedLaunchY = getQueuedLaunchY(midi, launchPoint.y, initialHeight);
             const coreColor = color.clone().lerp(WHITE_COLOR, 0.08);
-            spawnDeepBlueJet(launchPoint, midi, blackKey);
+            spawnPianoRollJet(launchPoint, midi, blackKey);
 
             const bar = {
                 key: barKey,
@@ -1395,17 +726,17 @@ import { createThemePanelController } from './ui/theme-panel.js';
                 jetPulseTimer: 0.22 + Math.random() * 0.12
             };
 
-            updateDeepBlueBarInstance(bar, bar.glowBaseOpacity);
-            activeDeepBlueBars.push(bar);
+            updatePianoRollBarInstance(bar, bar.glowBaseOpacity);
+            activePianoRollBars.push(bar);
 
             if (isSustained) {
-                liveDeepBlueBars.set(barKey, bar);
+                livePianoRollBars.set(barKey, bar);
             }
         }
 
-        function releaseDeepBlueNoteBar(source, midi) {
-            const barKey = getDeepBlueBarKey(source, midi);
-            const bar = liveDeepBlueBars.get(barKey);
+        function releasePianoRollNoteBar(source, midi) {
+            const barKey = getPianoRollBarKey(source, midi);
+            const bar = livePianoRollBars.get(barKey);
             if (!bar) return;
 
             bar.holding = false;
@@ -1414,15 +745,15 @@ import { createThemePanelController } from './ui/theme-panel.js';
             bar.launchY = bar.entryY;
             bar.velocity = 0.024;
             bar.fade = 1;
-            liveDeepBlueBars.delete(barKey);
+            livePianoRollBars.delete(barKey);
         }
 
-        function updateDeepBlueBars() {
-            const { height } = getPlaneViewSize(DEEP_BLUE_BAR_PLANE_Z);
+        function updatePianoRollBars() {
+            const { height } = getPlaneViewSize(PIANO_ROLL_BAR_PLANE_Z);
             const upperBound = height * 0.5 + 6;
 
-            for (let i = activeDeepBlueBars.length - 1; i >= 0; i--) {
-                const bar = activeDeepBlueBars[i];
+            for (let i = activePianoRollBars.length - 1; i >= 0; i--) {
+                const bar = activePianoRollBars[i];
                 if (typeof bar.glowBaseOpacity !== 'number') {
                     bar.glowBaseOpacity = 0.88;
                 }
@@ -1436,7 +767,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
 
                     bar.jetPulseTimer -= 1 / 60;
                     if (bar.jetPulseTimer <= 0) {
-                        spawnDeepBlueJet({ x: bar.x, y: bar.entryY }, bar.midi, isBlackKeyMidi(bar.midi), true);
+                        spawnPianoRollJet({ x: bar.x, y: bar.entryY }, bar.midi, isBlackKeyMidi(bar.midi), true);
                         bar.jetPulseTimer = 0.3 + Math.random() * 0.18;
                     }
                 } else if (bar.sprouting) {
@@ -1454,11 +785,11 @@ import { createThemePanelController } from './ui/theme-panel.js';
                 }
 
                 bar.glowBaseOpacity += (targetGlowBaseOpacity - bar.glowBaseOpacity) * 0.1;
-                updateDeepBlueBarInstance(bar, bar.glowBaseOpacity);
+                updatePianoRollBarInstance(bar, bar.glowBaseOpacity);
 
                 if (bar.positionY > upperBound) {
-                    releaseDeepBlueBarInstance(bar);
-                    activeDeepBlueBars.splice(i, 1);
+                    releasePianoRollBarInstance(bar);
+                    activePianoRollBars.splice(i, 1);
                 }
             }
         }
@@ -1472,10 +803,9 @@ import { createThemePanelController } from './ui/theme-panel.js';
         // =========================================================
         const activeSparks = [];
         const activeMists = [];
-        const activeDeepBlueJets = [];
+        const activePianoRollJets = [];
         const pooledSparks = [];
         const pooledMists = [];
-        const DEEP_BLUE_JET_MAX_PARTICLES = 960;
         let impactIdx = 0;
 
         const perfMonitor = createPerfMonitor({
@@ -1483,243 +813,52 @@ import { createThemePanelController } from './ui/theme-panel.js';
             getThemeLabel: () => getCurrentBackgroundTheme().label,
             getPixelRatio: () => renderer.getPixelRatio(),
             getStateSnapshot: () => ({
-                activeBars: activeDeepBlueBars.length,
+                activeBars: activePianoRollBars.length,
                 activeSparks: activeSparks.length,
                 activeMists: activeMists.length,
-                activeJets: activeDeepBlueJets.length,
+                activeJets: activePianoRollJets.length,
                 recordedEvents: recordSlotController?.getStats().recordedEvents ?? 0,
                 isPlaybackActive: (recordSlotController?.getStats().playingSlots ?? 0) > 0
             })
         });
 
-        function getEffectColor(midi) {
-            return EFFECT_COLOR_PALETTE[Math.abs(midi) % EFFECT_COLOR_PALETTE.length].clone();
-        }
-
-        function createDeepBlueJetBatch(renderOrder) {
-            const geo = new THREE.BufferGeometry();
-            const pos = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES * 3);
-            const vel = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES * 3);
-            const drift = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES * 3);
-            const sizes = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES);
-            const alphas = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES);
-            const colors = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES * 3);
-            const ages = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES);
-            const phases = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES);
-            const swirl = new Float32Array(DEEP_BLUE_JET_MAX_PARTICLES);
-            const freeIndices = [];
-
-            for (let i = DEEP_BLUE_JET_MAX_PARTICLES - 1; i >= 0; i--) {
-                freeIndices.push(i);
-            }
-
-            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-            geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
-            geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-
-            const points = new THREE.Points(geo, deepBlueJetMaterial);
-            points.renderOrder = renderOrder;
-            points.visible = false;
-            scene.add(points);
-
-            return {
-                points,
-                pos,
-                vel,
-                drift,
-                sizes,
-                alphas,
-                colors,
-                ages,
-                phases,
-                swirl,
-                freeIndices,
-                posAttr: geo.attributes.position,
-                sizeAttr: geo.attributes.aSize,
-                alphaAttr: geo.attributes.aAlpha,
-                colorAttr: geo.attributes.aColor
-            };
-        }
-
-        const deepBlueJetBatches = {
-            white: createDeepBlueJetBatch(8),
-            black: createDeepBlueJetBatch(11)
+        const pianoRollJetBatches = {
+            white: createPianoRollJetBatch(scene, pianoRollJetMaterial, 8),
+            black: createPianoRollJetBatch(scene, pianoRollJetMaterial, 11)
         };
-
-        function acquireDeepBlueJetIndices(batch, count) {
-            if (batch.freeIndices.length < count) {
-                return null;
-            }
-
-            const indices = new Array(count);
-            for (let i = 0; i < count; i++) {
-                indices[i] = batch.freeIndices.pop();
-            }
-            batch.points.visible = true;
-            return indices;
-        }
-
-        function releaseDeepBlueJetEffect(effect) {
-            const { batch, indices } = effect;
-            for (let i = 0; i < indices.length; i++) {
-                const index = indices[i];
-                batch.alphas[index] = 0;
-                batch.sizes[index] = 0;
-                batch.pos[index * 3] = 0;
-                batch.pos[index * 3 + 1] = 0;
-                batch.pos[index * 3 + 2] = 0;
-                batch.freeIndices.push(index);
-            }
-
-            batch.alphaAttr.needsUpdate = true;
-            batch.sizeAttr.needsUpdate = true;
-            batch.posAttr.needsUpdate = true;
-            if (batch.freeIndices.length === DEEP_BLUE_JET_MAX_PARTICLES) {
-                batch.points.visible = false;
-            }
-        }
-
-        function createSparkEffect(count) {
-            const geo = new THREE.BufferGeometry();
-            const pos = new Float32Array(count * 3);
-            const vel = new Float32Array(count * 3);
-            const sizes = new Float32Array(count);
-            const alphas = new Float32Array(count);
-            const types = new Float32Array(count);
-            const rx = new Float32Array(count);
-            const ry = new Float32Array(count);
-            const rz = new Float32Array(count);
-            const rvx = new Float32Array(count);
-            const rvy = new Float32Array(count);
-            const rvz = new Float32Array(count);
-
-            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-            geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
-            geo.setAttribute('aType', new THREE.BufferAttribute(types, 1));
-            geo.setAttribute('aRotX', new THREE.BufferAttribute(rx, 1));
-            geo.setAttribute('aRotY', new THREE.BufferAttribute(ry, 1));
-            geo.setAttribute('aRotZ', new THREE.BufferAttribute(rz, 1));
-
-            const points = new THREE.Points(geo, sparkMaterial);
-            points.renderOrder = 2;
-            points.visible = false;
-
-            return {
-                points,
-                geo,
-                pos,
-                vel,
-                sizes,
-                alphas,
-                types,
-                rx,
-                ry,
-                rz,
-                rvx,
-                rvy,
-                rvz,
-                posAttr: geo.attributes.position,
-                sizeAttr: geo.attributes.aSize,
-                alphaAttr: geo.attributes.aAlpha,
-                typeAttr: geo.attributes.aType,
-                rotXAttr: geo.attributes.aRotX,
-                rotYAttr: geo.attributes.aRotY,
-                rotZAttr: geo.attributes.aRotZ
-            };
-        }
-
-        function acquireSparkEffect(count) {
-            const effect = pooledSparks.pop() ?? createSparkEffect(count);
-            effect.points.visible = true;
-            scene.add(effect.points);
-            return effect;
-        }
-
-        function releaseSparkEffect(effect) {
-            scene.remove(effect.points);
-            effect.points.visible = false;
-            pooledSparks.push(effect);
-        }
-
-        function createMistEffect(count) {
-            const geo = new THREE.BufferGeometry();
-            const pos = new Float32Array(count * 3);
-            const drift = new Float32Array(count * 3);
-            const sizes = new Float32Array(count);
-            const alphas = new Float32Array(count);
-            const colors = new Float32Array(count * 3);
-
-            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-            geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
-            geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-
-            const points = new THREE.Points(geo, mistMaterial);
-            points.renderOrder = 1;
-            points.visible = false;
-
-            return {
-                points,
-                geo,
-                pos,
-                drift,
-                sizes,
-                alphas,
-                colors,
-                posAttr: geo.attributes.position,
-                sizeAttr: geo.attributes.aSize,
-                alphaAttr: geo.attributes.aAlpha,
-                colorAttr: geo.attributes.aColor
-            };
-        }
-
-        function acquireMistEffect(count) {
-            const effect = pooledMists.pop() ?? createMistEffect(count);
-            effect.points.visible = true;
-            scene.add(effect.points);
-            return effect;
-        }
-
-        function releaseMistEffect(effect) {
-            scene.remove(effect.points);
-            effect.points.visible = false;
-            pooledMists.push(effect);
-        }
 
         function clearActiveSparks() {
             for (let i = activeSparks.length - 1; i >= 0; i--) {
-                releaseSparkEffect(activeSparks[i]);
+                releaseSparkEffect(scene, pooledSparks, activeSparks[i]);
             }
             activeSparks.length = 0;
         }
 
         function clearActiveMists() {
             for (let i = activeMists.length - 1; i >= 0; i--) {
-                releaseMistEffect(activeMists[i]);
+                releaseMistEffect(scene, pooledMists, activeMists[i]);
             }
             activeMists.length = 0;
         }
 
-        function clearActiveDeepBlueJets() {
-            for (let i = activeDeepBlueJets.length - 1; i >= 0; i--) {
-                releaseDeepBlueJetEffect(activeDeepBlueJets[i]);
+        function clearActivePianoRollJets() {
+            for (let i = activePianoRollJets.length - 1; i >= 0; i--) {
+                releasePianoRollJetEffect(activePianoRollJets[i]);
             }
-            activeDeepBlueJets.length = 0;
+            activePianoRollJets.length = 0;
         }
 
         function syncBackgroundVisualState() {
             const showLegacyEffects = usesLegacyGridEffects();
-            const showDeepBlueBars = usesDeepBlueNoteLanes();
+            const showPianoRollBars = usesPianoRollNoteLanes();
 
             if (bgPoints) {
                 bgPoints.visible = showLegacyEffects;
             }
 
-            ensureDeepBlueBarGroup();
-            deepBlueBarGroup.visible = showDeepBlueBars;
-            updateDeepBlueMask();
+            ensurePianoRollBarGroup();
+            pianoRollBarGroup.visible = showPianoRollBars;
+            updatePianoRollMask();
 
             if (!showLegacyEffects) {
                 bgUniforms.uImpactTimes.value.fill(-100);
@@ -1727,9 +866,9 @@ import { createThemePanelController } from './ui/theme-panel.js';
                 clearActiveMists();
             }
 
-            if (!showDeepBlueBars) {
-                clearDeepBlueBars();
-                clearActiveDeepBlueJets();
+            if (!showPianoRollBars) {
+                clearPianoRollBars();
+                clearActivePianoRollJets();
             }
         }
 
@@ -1745,22 +884,22 @@ import { createThemePanelController } from './ui/theme-panel.js';
             triggerTimedHighlight(source, midi);
         }
 
-        function triggerDeepBlueNoteOn(source, midi, isSustained = false) {
-            startDeepBlueNoteBar(source, midi, isSustained);
+        function triggerPianoRollNoteOn(source, midi, isSustained = false) {
+            startPianoRollNoteBar(source, midi, isSustained);
         }
 
-        function triggerDeepBlueNoteOff(source, midi) {
-            releaseDeepBlueNoteBar(source, midi);
+        function triggerPianoRollNoteOff(source, midi) {
+            releasePianoRollNoteBar(source, midi);
         }
 
-        function spawnDeepBlueJet(point, midi, isBlackKey, isHeldPulse = false) {
-            if (!usesDeepBlueNoteLanes()) return;
+        function spawnPianoRollJet(point, midi, isBlackKey, isHeldPulse = false) {
+            if (!usesPianoRollNoteLanes()) return;
 
             const count = isHeldPulse
                 ? (isBlackKey ? 10 : 8)
                 : (isBlackKey ? 12 : 10);
-            const batch = isBlackKey ? deepBlueJetBatches.black : deepBlueJetBatches.white;
-            const indices = acquireDeepBlueJetIndices(batch, count);
+            const batch = isBlackKey ? pianoRollJetBatches.black : pianoRollJetBatches.white;
+            const indices = acquirePianoRollJetIndices(batch, count);
             if (!indices) return;
             const {
                 pos,
@@ -1792,7 +931,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
 
                 pos[offset] = point.x + spread * 0.3;
                 pos[offset + 1] = point.y - 0.008 + Math.random() * 0.012;
-                pos[offset + 2] = DEEP_BLUE_BAR_PLANE_Z + 0.008 + (Math.random() - 0.5) * 0.006;
+                pos[offset + 2] = PIANO_ROLL_BAR_PLANE_Z + 0.008 + (Math.random() - 0.5) * 0.006;
 
                 vel[offset] = spread * 0.16;
                 vel[offset + 1] = lift;
@@ -1820,7 +959,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
             batch.alphaAttr.needsUpdate = true;
             batch.colorAttr.needsUpdate = true;
 
-            activeDeepBlueJets.push({
+            activePianoRollJets.push({
                 batch,
                 indices,
                 isHeldPulse
@@ -1831,7 +970,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
             if (!usesLegacyGridEffects()) return;
 
             const count = 8;
-            const effect = acquireSparkEffect(count);
+            const effect = acquireSparkEffect(scene, pooledSparks, count, sparkMaterial);
             const {
                 points,
                 pos,
@@ -1888,7 +1027,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
             if (!usesLegacyGridEffects()) return;
 
             const count = 3;
-            const effect = acquireMistEffect(count);
+            const effect = acquireMistEffect(scene, pooledMists, count, mistMaterial);
             const { points, pos, drift, sizes, alphas, colors } = effect;
 
             for (let i = 0; i < count; i++) {
@@ -1991,7 +1130,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
                     s.rotZAttr.needsUpdate = true;
 
                     if (alive === 0) {
-                        releaseSparkEffect(s);
+                        releaseSparkEffect(scene, pooledSparks, s);
                         activeSparks.splice(i, 1);
                     }
                 }
@@ -2017,15 +1156,15 @@ import { createThemePanelController } from './ui/theme-panel.js';
                     m.alphaAttr.needsUpdate = true;
 
                     if (alive === 0) {
-                        releaseMistEffect(m);
+                        releaseMistEffect(scene, pooledMists, m);
                         activeMists.splice(i, 1);
                     }
                 }
             }
 
-            if (activeDeepBlueJets.length > 0) {
-                for (let i = activeDeepBlueJets.length - 1; i >= 0; i--) {
-                    const jet = activeDeepBlueJets[i];
+            if (activePianoRollJets.length > 0) {
+                for (let i = activePianoRollJets.length - 1; i >= 0; i--) {
+                    const jet = activePianoRollJets[i];
                     const { batch, indices } = jet;
                     let alive = 0;
 
@@ -2061,13 +1200,13 @@ import { createThemePanelController } from './ui/theme-panel.js';
                     batch.alphaAttr.needsUpdate = true;
 
                     if (alive === 0) {
-                        releaseDeepBlueJetEffect(jet);
-                        activeDeepBlueJets.splice(i, 1);
+                        releasePianoRollJetEffect(jet);
+                        activePianoRollJets.splice(i, 1);
                     }
                 }
             }
 
-            updateDeepBlueBars();
+            updatePianoRollBars();
 
             renderer.render(scene, camera);
             perfMonitor.sampleFrame(nowMs);
@@ -2082,5 +1221,5 @@ import { createThemePanelController } from './ui/theme-panel.js';
             renderer.setPixelRatio(window.devicePixelRatio || 1);
             renderer.setSize(window.innerWidth, window.innerHeight);
             updateBgPoints();
-            updateDeepBlueMask();
+            updatePianoRollMask();
         });
