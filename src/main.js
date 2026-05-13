@@ -8,11 +8,6 @@ import {
     bottomUi,
     currentKeyLabel,
     freePlayCard,
-    keyboardHelpLayout,
-    keyboardHelpPanel,
-    keyboardHelpSlots,
-    keyboardHelpTitle,
-    keyboardHelpToggle,
     keySelect,
     modeCards,
     modePanel,
@@ -57,8 +52,6 @@ import { createThemePanelController } from './ui/theme-panel.js';
         let liveInputController = null;
         let keyboardInputController = null;
         let pointerInputController = null;
-        const SCREEN_STATE_STORAGE_KEY = 'visualMusicScreenState';
-        const RESTORABLE_SCREENS = new Set(['home', 'free-play', 'absolute-pitch']);
         const {
             bindSoundSelect,
             createInstrumentInstance,
@@ -91,12 +84,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
         const pianoUi = document.getElementById('piano-ui');
         const recordSlotButtons = Array.from(document.querySelectorAll('.record-slot-button'));
         const allKeysMap = {};
-        const KEYBOARD_HELP_STORAGE_KEY = 'visualMusicKeyboardHelpEnabled';
-        const KEYBOARD_HELP_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
-        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
         let pianoLayoutFrame = null;
-        let keyboardHelpEnabled = localStorage.getItem(KEYBOARD_HELP_STORAGE_KEY) === 'true';
-        const activeKeyboardHelpKeys = new Map();
         const bottomUiDesignWidth = 1680;
         const bottomUiViewportGutter = 32;
 
@@ -209,42 +197,6 @@ import { createThemePanelController } from './ui/theme-panel.js';
             screenManager?.setScreen(nextScreen, options);
         }
 
-        function persistScreenState(state) {
-            if (!RESTORABLE_SCREENS.has(state?.currentScreen)) return;
-
-            sessionStorage.setItem(SCREEN_STATE_STORAGE_KEY, JSON.stringify({
-                currentScreen: state.currentScreen,
-                isFreePlayThemeSelection: !!state.isFreePlayThemeSelection
-            }));
-        }
-
-        function getRestoredScreenState() {
-            try {
-                const storedState = JSON.parse(sessionStorage.getItem(SCREEN_STATE_STORAGE_KEY));
-                if (RESTORABLE_SCREENS.has(storedState?.currentScreen)) {
-                    return {
-                        currentScreen: storedState.currentScreen,
-                        isFreePlayThemeSelection: !!storedState.isFreePlayThemeSelection
-                    };
-                }
-            } catch (err) {
-                sessionStorage.removeItem(SCREEN_STATE_STORAGE_KEY);
-            }
-
-            return {
-                currentScreen: 'home',
-                isFreePlayThemeSelection: false
-            };
-        }
-
-        function getRestoreScreenOptions(state) {
-            if (state.currentScreen !== 'free-play') return {};
-
-            return state.isFreePlayThemeSelection
-                ? { forceThemeSelection: true }
-                : { skipThemeSelection: true };
-        }
-
         function nowSeconds() {
             return performance.now() * 0.001;
         }
@@ -278,7 +230,6 @@ import { createThemePanelController } from './ui/theme-panel.js';
             currentKeyLabel.textContent = `${currentKeyRoot} ${modeText}`;
             keySelect.value = currentKeyRoot;
             modeSelect.value = currentMode;
-            renderKeyboardHelp();
         }
 
         keySelect.addEventListener('change', () => {
@@ -310,117 +261,6 @@ import { createThemePanelController } from './ui/theme-panel.js';
 
             return Math.max(21, Math.min(108, midi));
         }
-
-        function getMidiNoteLabel(midi) {
-            const noteName = NOTE_NAMES[((midi % 12) + 12) % 12];
-            const octave = Math.floor(midi / 12) - 1;
-            return `${noteName}${octave}`;
-        }
-
-        function syncKeyboardHelpKeyElement(keyEl, activeState) {
-            if (!keyEl) return;
-
-            keyEl.classList.toggle('is-playing', !!activeState);
-            if (activeState?.modifier) {
-                keyEl.dataset.modifier = activeState.modifier;
-            } else {
-                delete keyEl.dataset.modifier;
-            }
-        }
-
-        function getKeyboardHelpKeyElement(key) {
-            return keyboardHelpLayout?.querySelector(`.keyboard-help-key[data-key="${key}"]`) ?? null;
-        }
-
-        function setKeyboardHelpKeyActive({ key, midi, modifier = 'natural' }, isActive) {
-            if (!key) return;
-
-            if (isActive) {
-                activeKeyboardHelpKeys.set(key, { midi, modifier });
-            } else {
-                activeKeyboardHelpKeys.delete(key);
-            }
-
-            syncKeyboardHelpKeyElement(getKeyboardHelpKeyElement(key), activeKeyboardHelpKeys.get(key));
-        }
-
-        function createKeyboardHelpKey(key) {
-            const midi = getMidiFromScaleKey(key, false, false);
-            const sharpMidi = getMidiFromScaleKey(key, true, false);
-            const flatMidi = getMidiFromScaleKey(key, false, true);
-            const keyEl = document.createElement('div');
-            keyEl.className = 'keyboard-help-key';
-            keyEl.dataset.key = key;
-
-            const keyNameEl = document.createElement('span');
-            keyNameEl.className = 'keyboard-help-key-name';
-            keyNameEl.textContent = key.toUpperCase();
-
-            const noteEl = document.createElement('span');
-            noteEl.className = 'keyboard-help-key-note';
-            noteEl.textContent = midi === null ? '-' : getMidiNoteLabel(midi);
-
-            const altEl = document.createElement('span');
-            altEl.className = 'keyboard-help-key-alt';
-            altEl.textContent = midi === null ? '' : `+ ${getMidiNoteLabel(sharpMidi)} / - ${getMidiNoteLabel(flatMidi)}`;
-
-            keyEl.append(keyNameEl, noteEl, altEl);
-            syncKeyboardHelpKeyElement(keyEl, activeKeyboardHelpKeys.get(key));
-            return keyEl;
-        }
-
-        function renderKeyboardHelp() {
-            if (!keyboardHelpLayout || !keyboardHelpTitle || !keyboardHelpSlots) return;
-
-            const modeText = currentMode === 'major' ? 'Major' : 'Minor';
-            keyboardHelpTitle.textContent = `${currentKeyRoot} ${modeText}`;
-            keyboardHelpLayout.replaceChildren();
-
-            KEYBOARD_HELP_ROWS.forEach((rowKeys, rowIndex) => {
-                const rowEl = document.createElement('div');
-                rowEl.className = `keyboard-help-row row-${rowIndex + 1}`;
-                rowKeys.split('').forEach((key) => rowEl.appendChild(createKeyboardHelpKey(key)));
-                keyboardHelpLayout.appendChild(rowEl);
-            });
-
-            keyboardHelpSlots.replaceChildren();
-            for (let slot = 1; slot <= 6; slot += 1) {
-                const slotEl = document.createElement('span');
-                slotEl.className = 'keyboard-help-slot';
-                slotEl.textContent = `${slot} REC`;
-                keyboardHelpSlots.appendChild(slotEl);
-            }
-        }
-
-        function syncKeyboardHelpState() {
-            if (!keyboardHelpToggle || !keyboardHelpPanel) return;
-
-            keyboardHelpPanel.classList.toggle('is-open', keyboardHelpEnabled);
-            keyboardHelpPanel.setAttribute('aria-hidden', keyboardHelpEnabled ? 'false' : 'true');
-            keyboardHelpToggle.classList.toggle('is-active', keyboardHelpEnabled);
-            keyboardHelpToggle.setAttribute('aria-pressed', keyboardHelpEnabled ? 'true' : 'false');
-            keyboardHelpToggle.textContent = keyboardHelpEnabled ? 'Keys: On' : 'Keys: Off';
-        }
-
-        function setKeyboardHelpEnabled(nextEnabled) {
-            keyboardHelpEnabled = nextEnabled;
-            localStorage.setItem(KEYBOARD_HELP_STORAGE_KEY, keyboardHelpEnabled ? 'true' : 'false');
-            syncKeyboardHelpState();
-        }
-
-        keyboardHelpToggle?.addEventListener('click', () => {
-            setKeyboardHelpEnabled(!keyboardHelpEnabled);
-        });
-
-        window.addEventListener('keydown', (event) => {
-            if (event.key !== '?' || event.repeat || !isInteractivePlayback()) return;
-
-            event.preventDefault();
-            setKeyboardHelpEnabled(!keyboardHelpEnabled);
-        });
-
-        renderKeyboardHelp();
-        syncKeyboardHelpState();
         updateKeyUI();
 
         // =========================================================
@@ -486,7 +326,6 @@ import { createThemePanelController } from './ui/theme-panel.js';
             themeUi: themePanelController,
             onPlayBackHomeClickSound: playBackHomeClickSound,
             onPlayModeCardClickSound: playModeCardClickSound,
-            onScreenChange: persistScreenState,
             stopRecordSlots: () => recordSlotController?.stopAll()
         });
 
@@ -549,8 +388,6 @@ import { createThemePanelController } from './ui/theme-panel.js';
             initAudio,
             isInstrumentLoading: getIsInstrumentLoading,
             onHomeEnter: () => transitionFromHome(freePlayCard, 'free-play'),
-            onKeyboardGuideKeyDown: (payload) => setKeyboardHelpKeyActive(payload, true),
-            onKeyboardGuideKeyUp: (payload) => setKeyboardHelpKeyActive(payload, false),
             onLiveNoteOff: (payload) => liveInputController?.triggerNoteOff(payload),
             onLiveNoteOn: (payload) => liveInputController?.triggerNoteOn(payload),
             onRecordSlotHotkey: (index) => recordSlotController?.triggerSlot(index),
@@ -601,8 +438,7 @@ import { createThemePanelController } from './ui/theme-panel.js';
         themePanelController.setupThemePanel();
         applyBackgroundTheme(0);
         screenManager.bindUi();
-        const restoredScreenState = getRestoredScreenState();
-        setScreen(restoredScreenState.currentScreen, getRestoreScreenOptions(restoredScreenState));
+        setScreen('home');
         absolutePitch.resetIntro();
 
         // =========================================================

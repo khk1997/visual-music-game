@@ -14,7 +14,6 @@ export function createScreenManager({
     themeUi,
     onPlayBackHomeClickSound,
     onPlayModeCardClickSound,
-    onScreenChange,
     stopRecordSlots
 }) {
     let currentScreen = 'home';
@@ -110,10 +109,6 @@ export function createScreenManager({
                 : 'Free Play';
         document.body.style.cursor = isFreePlay && !isFreePlayThemeSelection ? 'crosshair' : 'default';
         themeUi.updateThemePanelSelection();
-        onScreenChange?.({
-            currentScreen,
-            isFreePlayThemeSelection
-        });
     }
 
     function transitionFromHome(selectedCard, nextScreen) {
