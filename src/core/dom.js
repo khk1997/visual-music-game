@@ -16,6 +16,7 @@ export const themePreviewMedia = document.getElementById('theme-preview-media');
 export const themePreviewTitle = document.getElementById('theme-preview-title');
 export const themePreviewDescription = document.getElementById('theme-preview-description');
 export const modeStatus = document.getElementById('mode-status');
+export const midiStatus = document.getElementById('midi-status');
 export const soundSelect = document.getElementById('sound-select');
 export const absolutePitchUi = document.getElementById('absolute-pitch-ui');
 export const keySelect = document.getElementById('key-select');

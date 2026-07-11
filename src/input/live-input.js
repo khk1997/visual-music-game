@@ -13,7 +13,7 @@ export function createLiveInputService({
 }) {
     const activeHeldKeyStates = new Map();
 
-    function playHeldMidi(key, midi) {
+    function playHeldMidi(key, midi, velocity) {
         const instrument = getInstrument();
         if (!instrument || getIsInstrumentLoading() || !supportsHeldNotes(getCurrentSound()) || activeHeldKeyStates.has(key)) {
             return;
@@ -21,7 +21,7 @@ export function createLiveInputService({
 
         const note = Tone.Frequency(midi, 'midi').toNote();
         const startTime = getTriggerTime();
-        instrument.triggerAttack(note, startTime);
+        instrument.triggerAttack(note, startTime, velocity ?? 0.9);
         activeHeldKeyStates.set(key, { note, startTime, instrumentRef: instrument });
     }
 
@@ -43,12 +43,12 @@ export function createLiveInputService({
         activeHeldKeyStates.delete(key);
     }
 
-    function triggerNoteOn({ key, midi, ringX, ringY, sustained = false }) {
-        onVisualNoteOn(midi, ringX, ringY, sustained);
+    function triggerNoteOn({ key, midi, ringX, ringY, sustained = false, velocity }) {
+        onVisualNoteOn(midi, ringX, ringY, sustained, velocity);
         onRecordEvent({ type: 'note-on', midi, ringX, ringY, sustained });
 
         if (typeof key === 'string' && supportsHeldNotes(getCurrentSound())) {
-            playHeldMidi(key, midi);
+            playHeldMidi(key, midi, velocity);
             return;
         }
 

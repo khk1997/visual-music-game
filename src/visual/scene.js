@@ -7,7 +7,9 @@ export function createVisualScene() {
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.z = 8;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // ?capture 供錄製示範影片用:允許 toDataURL/toBlob 讀取畫面,平常不開以免影響效能
+    const preserveDrawingBuffer = new URLSearchParams(window.location.search).has('capture');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio || 1);
     renderer.toneMapping = THREE.ReinhardToneMapping;

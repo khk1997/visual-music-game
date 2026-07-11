@@ -15,6 +15,7 @@ import {
     modePanel,
     modeScreen,
     modeSelect,
+    midiStatus,
     modeStatus,
     playbackScreen,
     soundSelect,
@@ -36,6 +37,7 @@ import { createInstrumentManager } from './audio/instrument-manager.js';
 import { createRecordSlotController } from './audio/record-slots.js';
 import { createKeyboardInputController } from './input/keyboard.js';
 import { createLiveInputService } from './input/live-input.js';
+import { createMidiInputController } from './input/midi.js';
 import { createPointerInputController } from './input/pointer.js';
 import { createAbsolutePitchModule } from './modes/absolute-pitch.js';
 import { BACKGROUND_THEMES } from './themes/registry.js';
@@ -69,6 +71,8 @@ import {
     releaseMistEffect,
     releaseSparkEffect
 } from './visual/effects.js';
+import { createFireworksSystem } from './visual/fireworks.js';
+import { createGeometryPulseSystem } from './visual/geometry-pulse.js';
 import { createVisualMaterials } from './visual/materials.js';
 import { createVisualScene } from './visual/scene.js';
 import {
@@ -81,6 +85,8 @@ import {
 // 1. 音源設定
 // =========================================================
         const PIANO_TAP_DURATION = 0.12;
+        let currentNoteIntensity = 0.85;
+        let midiInputController = null;
         let backgroundVisualsReady = false;
         let screenManager = null;
         let themePanelController = null;
@@ -307,6 +313,12 @@ import {
         // =========================================================
         const { scene, camera, renderer } = createVisualScene();
 
+        const screenPointScratch = {
+            mouse: new THREE.Vector2(),
+            ray: new THREE.Raycaster(),
+            plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
+        };
+
         keyboardGuideController = createKeyboardGuideController({
             guideEl: keyboardGuide,
             toggleButton: keyboardGuideToggleButton,
@@ -331,9 +343,9 @@ import {
                 scene.background = new THREE.Color(theme.color);
                 renderer.toneMappingExposure = theme.exposure;
 
-                if (theme.id === 'piano-roll' && getCurrentSound() !== 'piano') {
-                    soundSelect.value = 'piano';
-                    void switchInstrument('piano');
+                if (theme.forcedInstrument && getCurrentSound() !== theme.forcedInstrument) {
+                    soundSelect.value = theme.forcedInstrument;
+                    void switchInstrument(theme.forcedInstrument);
                 }
 
                 if (backgroundVisualsReady) {
@@ -407,7 +419,8 @@ import {
                 highlightKey('user', midi, false);
                 triggerPianoRollNoteOff('user', midi);
             },
-            onVisualNoteOn: (midi, x, y, sustained) => {
+            onVisualNoteOn: (midi, x, y, sustained, velocity) => {
+                currentNoteIntensity = velocity ?? 0.85;
                 playVisualFeedback('user', midi, x, y);
                 triggerPianoRollNoteOn('user', midi, sustained);
             },
@@ -443,12 +456,59 @@ import {
         });
         pointerInputController.bind();
 
+        function getRingPointForMidi(midi) {
+            const keyEl = allKeysMap[midi];
+            if (keyEl) {
+                const rect = keyEl.getBoundingClientRect();
+                const point = getScreenPointOnPlane(
+                    rect.left + rect.width * 0.5,
+                    rect.top,
+                    RING_PLANE_Z
+                );
+                if (point) return point;
+            }
+            return { x: ((midi - 21) / 87) * 12 - 6, y: 0 };
+        }
+
+        function updateMidiStatus(deviceNames) {
+            if (!midiStatus) return;
+
+            if (deviceNames === null) {
+                midiStatus.classList.add('hidden');
+                return;
+            }
+
+            midiStatus.classList.remove('hidden');
+            if (deviceNames.length === 0) {
+                midiStatus.textContent = 'MIDI: 未連接';
+                midiStatus.classList.remove('is-connected');
+            } else {
+                midiStatus.textContent = `MIDI: ${deviceNames.join(', ')}`;
+                midiStatus.classList.add('is-connected');
+            }
+        }
+
+        midiInputController = createMidiInputController({
+            isInteractivePlayback,
+            initAudio,
+            isInstrumentLoading: getIsInstrumentLoading,
+            getRingPointForMidi,
+            onLiveNoteOn: (payload) => liveInputController?.triggerNoteOn(payload),
+            onLiveNoteOff: (payload) => liveInputController?.triggerNoteOff(payload),
+            onDevicesChanged: updateMidiStatus
+        });
+        void midiInputController.bind();
+
         function getCurrentBackgroundTheme() {
             return themePanelController.getCurrentBackgroundTheme();
         }
 
+        function getVisualSystem() {
+            return getCurrentBackgroundTheme().visualSystem ?? 'legacy-grid';
+        }
+
         function usesLegacyGridEffects() {
-            return getCurrentBackgroundTheme().id === 'playstation-style';
+            return getVisualSystem() === 'legacy-grid';
         }
 
         function updateThemePanelSelection() {
@@ -542,7 +602,15 @@ import {
         }
 
         function usesPianoRollNoteLanes() {
-            return getCurrentBackgroundTheme().id === 'piano-roll';
+            return getVisualSystem() === 'piano-roll';
+        }
+
+        function usesFireworks() {
+            return getVisualSystem() === 'fireworks';
+        }
+
+        function usesGeometryPulse() {
+            return getVisualSystem() === 'geometry-pulse';
         }
 
         function clearPianoRollBars() {
@@ -789,6 +857,14 @@ import {
             black: createPianoRollJetBatch(scene, pianoRollJetMaterial, 11)
         };
 
+        const FIREWORKS_PLANE_Z = -1.5;
+        const fireworksSystem = createFireworksSystem({
+            scene,
+            texture: haloTexture,
+            planeZ: FIREWORKS_PLANE_Z
+        });
+        const geometryPulseSystem = createGeometryPulseSystem({ scene });
+
         function clearActiveSparks() {
             for (let i = activeSparks.length - 1; i >= 0; i--) {
                 releaseSparkEffect(scene, pooledSparks, activeSparks[i]);
@@ -822,6 +898,9 @@ import {
             pianoRollBarGroup.visible = showPianoRollBars;
             updatePianoRollMask();
 
+            fireworksSystem.setVisible(usesFireworks());
+            geometryPulseSystem.setVisible(usesGeometryPulse());
+
             if (!showLegacyEffects) {
                 bgUniforms.uImpactTimes.value.fill(-100);
                 clearActiveSparks();
@@ -841,6 +920,11 @@ import {
                 bgUniforms.uImpacts.value[impactIdx].set(bgPoint.x, bgPoint.y, 0);
                 bgUniforms.uImpactTimes.value[impactIdx] = performance.now() * 0.001;
                 impactIdx = (impactIdx + 1) % 20;
+            } else if (usesFireworks()) {
+                const burstPoint = projectPointToPlane(bgPoint, FIREWORKS_PLANE_Z);
+                fireworksSystem.spawnBurst(burstPoint.x, burstPoint.y, midi, currentNoteIntensity);
+            } else if (usesGeometryPulse()) {
+                geometryPulseSystem.noteOn(midi, currentNoteIntensity);
             }
 
             triggerTimedHighlight(source, midi);
@@ -967,16 +1051,15 @@ import {
         }
 
         function getScreenPointOnPlane(clientX, clientY, targetZ) {
-            const mouse = new THREE.Vector2(
+            const { mouse, ray, plane } = screenPointScratch;
+            mouse.set(
                 (clientX / window.innerWidth) * 2 - 1,
                 -(clientY / window.innerHeight) * 2 + 1
             );
-
-            const ray = new THREE.Raycaster();
             ray.setFromCamera(mouse, camera);
 
             const point = new THREE.Vector3();
-            const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -targetZ);
+            plane.constant = -targetZ;
             ray.ray.intersectPlane(plane, point);
             return point;
         }
@@ -1081,6 +1164,8 @@ import {
             }
 
             updatePianoRollBars();
+            fireworksSystem.update(deltaSeconds);
+            geometryPulseSystem.update(deltaSeconds, now);
 
             renderer.render(scene, camera);
             perfMonitor.sampleFrame(nowMs);

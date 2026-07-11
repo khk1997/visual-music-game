@@ -144,6 +144,29 @@
             text-transform: uppercase;
         }
 
+        #midi-status {
+            color: rgba(255,255,255,0.45);
+            font-size: 12px;
+            letter-spacing: 0.04em;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.14);
+            max-width: 280px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #midi-status.is-connected {
+            color: #7df0c8;
+            border-color: rgba(125, 240, 200, 0.45);
+            box-shadow: 0 0 12px rgba(125, 240, 200, 0.18);
+        }
+
+        #midi-status.hidden {
+            display: none;
+        }
+
         #theme-panel {
             position: absolute;
             top: 72px;
@@ -478,12 +501,28 @@
         }
 
         .theme-preview-media {
+            position: relative;
             aspect-ratio: 16 / 9;
             border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
             background:
                 radial-gradient(circle at 24% 20%, rgba(255,255,255,0.08), transparent 30%),
                 linear-gradient(180deg, rgba(24, 29, 38, 0.92), rgba(14, 18, 24, 0.92));
+        }
+
+        .theme-preview-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .theme-preview-video.is-ready {
+            opacity: 1;
         }
 
         .theme-preview-meta {

@@ -19,6 +19,47 @@ export function createThemePanelController({
     let hasConfirmedThemeSelectionInCurrentFlow = false;
     let isThemeSelectionTransitioning = false;
     const transitionTimers = [];
+    let previewVideoEl = null;
+    let previewVideoSrc = null;
+
+    function updatePreviewVideo(theme) {
+        if (!themePreviewMedia) return;
+
+        if (!theme.previewVideo) {
+            if (previewVideoEl) {
+                previewVideoEl.pause();
+                previewVideoEl.remove();
+                previewVideoEl = null;
+                previewVideoSrc = null;
+            }
+            return;
+        }
+
+        if (!previewVideoEl) {
+            previewVideoEl = document.createElement('video');
+            previewVideoEl.className = 'theme-preview-video';
+            previewVideoEl.muted = true;
+            previewVideoEl.loop = true;
+            previewVideoEl.autoplay = true;
+            previewVideoEl.playsInline = true;
+            previewVideoEl.setAttribute('aria-hidden', 'true');
+            previewVideoEl.addEventListener('loadeddata', () => {
+                previewVideoEl?.classList.add('is-ready');
+            });
+            previewVideoEl.addEventListener('error', () => {
+                // 影片缺檔或載入失敗時退回漸層背景
+                previewVideoEl?.classList.remove('is-ready');
+            });
+            themePreviewMedia.appendChild(previewVideoEl);
+        }
+
+        if (previewVideoSrc !== theme.previewVideo) {
+            previewVideoSrc = theme.previewVideo;
+            previewVideoEl.classList.remove('is-ready');
+            previewVideoEl.src = theme.previewVideo;
+            void previewVideoEl.play().catch(() => {});
+        }
+    }
 
     function getCurrentBackgroundTheme() {
         return themes[currentBackgroundIndex];
@@ -86,6 +127,7 @@ export function createThemePanelController({
         }
         if (themePreviewMedia) {
             themePreviewMedia.style.background = previewTheme.previewBackground || '';
+            updatePreviewVideo(previewTheme);
         }
 
         if (!themeList || isThemeSelectionTransitioning) return;
@@ -169,6 +211,7 @@ export function createThemePanelController({
         if (!themePanel) return;
         themePanel.classList.remove('is-open');
         themePanel.setAttribute('aria-hidden', 'true');
+        previewVideoEl?.pause();
         backgroundToggleButton.classList.remove('is-active');
         hoveredThemeIndex = null;
         themeDragState = null;
@@ -179,6 +222,7 @@ export function createThemePanelController({
         if (!themePanel) return;
         themePanel.classList.add('is-open');
         themePanel.setAttribute('aria-hidden', 'false');
+        if (previewVideoEl) void previewVideoEl.play().catch(() => {});
         backgroundToggleButton.classList.add('is-active');
         themePanelActiveIndex = currentBackgroundIndex;
         hoveredThemeIndex = null;
