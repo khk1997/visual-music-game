@@ -72,6 +72,7 @@ import {
     releaseSparkEffect
 } from './visual/effects.js';
 import { createFireworksSystem } from './visual/fireworks.js';
+import { createFluidInkSystem } from './visual/fluid-ink.js';
 import { createGeometryPulseSystem } from './visual/geometry-pulse.js';
 import { createVisualMaterials } from './visual/materials.js';
 import { createVisualScene } from './visual/scene.js';
@@ -398,6 +399,9 @@ import {
                         triggerPianoRollNoteOff('playback', playbackMidi);
                     }
                 }
+
+                // 墨水的持續墨流不在 livePianoRollBars 裡，需另外清掉回放來源的墨流
+                fluidInkSystem.noteOffByPrefix('playback:');
             },
             supportsHeldNotes,
             tapDuration: PIANO_TAP_DURATION,
@@ -611,6 +615,10 @@ import {
 
         function usesGeometryPulse() {
             return getVisualSystem() === 'geometry-pulse';
+        }
+
+        function usesFluidInk() {
+            return getVisualSystem() === 'fluid-ink';
         }
 
         function clearPianoRollBars() {
@@ -865,6 +873,13 @@ import {
         });
         const geometryPulseSystem = createGeometryPulseSystem({ scene });
 
+        const FLUID_INK_PLANE_Z = -1.5;
+        const fluidInkSystem = createFluidInkSystem({
+            scene,
+            camera,
+            planeZ: FLUID_INK_PLANE_Z
+        });
+
         function clearActiveSparks() {
             for (let i = activeSparks.length - 1; i >= 0; i--) {
                 releaseSparkEffect(scene, pooledSparks, activeSparks[i]);
@@ -901,6 +916,11 @@ import {
             fireworksSystem.setVisible(usesFireworks());
             geometryPulseSystem.setVisible(usesGeometryPulse());
 
+            fluidInkSystem.setVisible(usesFluidInk());
+            if (!usesFluidInk()) {
+                fluidInkSystem.clear();
+            }
+
             if (!showLegacyEffects) {
                 bgUniforms.uImpactTimes.value.fill(-100);
                 clearActiveSparks();
@@ -932,10 +952,16 @@ import {
 
         function triggerPianoRollNoteOn(source, midi, isSustained = false) {
             startPianoRollNoteBar(source, midi, isSustained);
+
+            if (usesFluidInk()) {
+                const launchPoint = getMidiLaunchPosition(midi, FLUID_INK_PLANE_Z);
+                fluidInkSystem.noteOn(`${source}:${midi}`, launchPoint.x, launchPoint.y, midi, currentNoteIntensity, isSustained);
+            }
         }
 
         function triggerPianoRollNoteOff(source, midi) {
             releasePianoRollNoteBar(source, midi);
+            fluidInkSystem.noteOff(`${source}:${midi}`);
         }
 
         function spawnPianoRollJet(point, midi, isBlackKey, isHeldPulse = false) {
@@ -1166,6 +1192,7 @@ import {
             updatePianoRollBars();
             fireworksSystem.update(deltaSeconds);
             geometryPulseSystem.update(deltaSeconds, now);
+            fluidInkSystem.update(deltaSeconds);
 
             renderer.render(scene, camera);
             perfMonitor.sampleFrame(nowMs);
@@ -1181,4 +1208,5 @@ import {
             renderer.setSize(window.innerWidth, window.innerHeight);
             updateBgPoints();
             updatePianoRollMask();
+            fluidInkSystem.handleResize();
         });

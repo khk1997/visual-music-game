@@ -57,5 +57,13 @@ export const BACKGROUND_THEMES = [
         description: '中央幾何體隨音符呼吸、旋轉、變色，低音撼動形體、高音點亮稜線，適合慢速沉浸演奏。',
         previewVideo: 'assets/previews/geometry-pulse.webm',
         previewBackground: 'radial-gradient(circle at 50% 42%, rgba(120, 220, 255, 0.24), transparent 36%), radial-gradient(circle at 24% 74%, rgba(122, 92, 255, 0.2), transparent 32%), linear-gradient(180deg, rgba(10, 16, 30, 0.97), rgba(6, 9, 18, 0.98))'
+    }),
+    defineTheme({
+        label: 'Fluid Ink',
+        visualSystem: 'fluid-ink',
+        color: 0x05060d,
+        exposure: 1.7,
+        description: '流體墨水模擬，按下琴鍵時彩色墨流從琴鍵位置向上噴發暈染，按住可持續注入墨流。',
+        previewBackground: 'radial-gradient(ellipse at 30% 85%, rgba(64, 224, 208, 0.3), transparent 42%), radial-gradient(ellipse at 62% 70%, rgba(186, 85, 255, 0.26), transparent 46%), radial-gradient(ellipse at 78% 88%, rgba(255, 96, 160, 0.22), transparent 38%), linear-gradient(180deg, rgba(8, 9, 18, 0.97), rgba(4, 5, 11, 0.98))'
     })
 ];
