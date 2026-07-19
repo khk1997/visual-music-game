@@ -14,10 +14,9 @@ function defineTheme(theme) {
 }
 
 // visualSystem 決定 main.js 掛載哪一套背景視覺模組:
-//   'legacy-grid'    → 波紋網格 + 火花 + 霧氣
-//   'piano-roll'     → 音軌長條 + 噴射粒子
-//   'fireworks'      → 音符煙火爆發
-//   'geometry-pulse' → 中央幾何體律動
+//   'legacy-grid' → 波紋網格 + 火花 + 霧氣
+//   'piano-roll'  → 音軌長條 + 噴射粒子
+//   'fluid-ink'   → 流體墨水模擬
 // forcedInstrument(選填)進入該主題時強制切換音色。
 // previewVideo(選填)主題選擇頁右側的示範影片路徑;無檔案時顯示 previewBackground 漸層。
 export const BACKGROUND_THEMES = [
@@ -41,29 +40,12 @@ export const BACKGROUND_THEMES = [
         previewBackground: 'radial-gradient(circle at 70% 24%, rgba(115, 202, 255, 0.2), transparent 34%), radial-gradient(circle at 22% 76%, rgba(40, 124, 210, 0.24), transparent 38%), linear-gradient(180deg, rgba(8, 25, 42, 0.97), rgba(3, 13, 24, 0.97))'
     }),
     defineTheme({
-        label: 'Fireworks',
-        visualSystem: 'fireworks',
-        color: 0x050510,
-        exposure: 1.85,
-        description: '每個音符化成一場煙火，音高決定色彩、彈得越密天空越熱鬧，適合節奏強烈的演奏。',
-        previewVideo: 'assets/previews/fireworks.webm',
-        previewBackground: 'radial-gradient(circle at 30% 26%, rgba(255, 168, 92, 0.26), transparent 30%), radial-gradient(circle at 72% 60%, rgba(255, 92, 168, 0.22), transparent 34%), linear-gradient(180deg, rgba(16, 12, 34, 0.97), rgba(5, 5, 16, 0.98))'
-    }),
-    defineTheme({
-        label: 'Geometry Pulse',
-        visualSystem: 'geometry-pulse',
-        color: 0x070b14,
-        exposure: 1.7,
-        description: '中央幾何體隨音符呼吸、旋轉、變色，低音撼動形體、高音點亮稜線，適合慢速沉浸演奏。',
-        previewVideo: 'assets/previews/geometry-pulse.webm',
-        previewBackground: 'radial-gradient(circle at 50% 42%, rgba(120, 220, 255, 0.24), transparent 36%), radial-gradient(circle at 24% 74%, rgba(122, 92, 255, 0.2), transparent 32%), linear-gradient(180deg, rgba(10, 16, 30, 0.97), rgba(6, 9, 18, 0.98))'
-    }),
-    defineTheme({
         label: 'Fluid Ink',
         visualSystem: 'fluid-ink',
         color: 0x05060d,
         exposure: 1.7,
         description: '流體墨水模擬，按下琴鍵時彩色墨流從琴鍵位置向上噴發暈染，按住可持續注入墨流。',
+        previewVideo: 'assets/previews/fluid-ink.webm',
         previewBackground: 'radial-gradient(ellipse at 30% 85%, rgba(64, 224, 208, 0.3), transparent 42%), radial-gradient(ellipse at 62% 70%, rgba(186, 85, 255, 0.26), transparent 46%), radial-gradient(ellipse at 78% 88%, rgba(255, 96, 160, 0.22), transparent 38%), linear-gradient(180deg, rgba(8, 9, 18, 0.97), rgba(4, 5, 11, 0.98))'
     })
 ];

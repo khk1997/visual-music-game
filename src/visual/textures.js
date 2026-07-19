@@ -159,29 +159,6 @@ export function createPS5Textures() {
     return { sparkTex, bgTex, mistTex };
 }
 
-export function createHaloTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-
-    const gradient = ctx.createRadialGradient(128, 128, 18, 128, 128, 128);
-    gradient.addColorStop(0, 'rgba(255,255,255,0.92)');
-    gradient.addColorStop(0.18, 'rgba(255,255,255,0.76)');
-    gradient.addColorStop(0.34, 'rgba(255,255,255,0.28)');
-    gradient.addColorStop(0.55, 'rgba(255,255,255,0.12)');
-    gradient.addColorStop(1, 'rgba(255,255,255,0)');
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(128, 128, 128, 0, Math.PI * 2);
-    ctx.fill();
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-}
-
 export function createPianoRollBarTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;

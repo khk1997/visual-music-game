@@ -71,14 +71,11 @@ import {
     releaseMistEffect,
     releaseSparkEffect
 } from './visual/effects.js';
-import { createFireworksSystem } from './visual/fireworks.js';
 import { createFluidInkSystem } from './visual/fluid-ink.js';
-import { createGeometryPulseSystem } from './visual/geometry-pulse.js';
 import { createVisualMaterials } from './visual/materials.js';
 import { createVisualScene } from './visual/scene.js';
 import {
     createPianoRollBarTexture,
-    createHaloTexture,
     createPS5Textures
 } from './visual/textures.js';
 
@@ -547,8 +544,6 @@ import {
         // =========================================================
         const { sparkTex, bgTex, mistTex } = createPS5Textures();
 
-        const haloTexture = createHaloTexture();
-
         const pianoRollBarTexture = createPianoRollBarTexture();
 
         // =========================================================
@@ -607,14 +602,6 @@ import {
 
         function usesPianoRollNoteLanes() {
             return getVisualSystem() === 'piano-roll';
-        }
-
-        function usesFireworks() {
-            return getVisualSystem() === 'fireworks';
-        }
-
-        function usesGeometryPulse() {
-            return getVisualSystem() === 'geometry-pulse';
         }
 
         function usesFluidInk() {
@@ -865,18 +852,11 @@ import {
             black: createPianoRollJetBatch(scene, pianoRollJetMaterial, 11)
         };
 
-        const FIREWORKS_PLANE_Z = -1.5;
-        const fireworksSystem = createFireworksSystem({
-            scene,
-            texture: haloTexture,
-            planeZ: FIREWORKS_PLANE_Z
-        });
-        const geometryPulseSystem = createGeometryPulseSystem({ scene });
-
         const FLUID_INK_PLANE_Z = -1.5;
         const fluidInkSystem = createFluidInkSystem({
             scene,
             camera,
+            renderer,
             planeZ: FLUID_INK_PLANE_Z
         });
 
@@ -913,9 +893,6 @@ import {
             pianoRollBarGroup.visible = showPianoRollBars;
             updatePianoRollMask();
 
-            fireworksSystem.setVisible(usesFireworks());
-            geometryPulseSystem.setVisible(usesGeometryPulse());
-
             fluidInkSystem.setVisible(usesFluidInk());
             if (!usesFluidInk()) {
                 fluidInkSystem.clear();
@@ -940,11 +917,6 @@ import {
                 bgUniforms.uImpacts.value[impactIdx].set(bgPoint.x, bgPoint.y, 0);
                 bgUniforms.uImpactTimes.value[impactIdx] = performance.now() * 0.001;
                 impactIdx = (impactIdx + 1) % 20;
-            } else if (usesFireworks()) {
-                const burstPoint = projectPointToPlane(bgPoint, FIREWORKS_PLANE_Z);
-                fireworksSystem.spawnBurst(burstPoint.x, burstPoint.y, midi, currentNoteIntensity);
-            } else if (usesGeometryPulse()) {
-                geometryPulseSystem.noteOn(midi, currentNoteIntensity);
             }
 
             triggerTimedHighlight(source, midi);
@@ -1190,8 +1162,6 @@ import {
             }
 
             updatePianoRollBars();
-            fireworksSystem.update(deltaSeconds);
-            geometryPulseSystem.update(deltaSeconds, now);
             fluidInkSystem.update(deltaSeconds);
 
             renderer.render(scene, camera);
